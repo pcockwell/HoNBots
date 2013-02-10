@@ -3,7 +3,13 @@ SoulReaperBot Changelog
 
 Release Thread
 --------------
-(SoulReaperBot (v0.1))[http://forums.heroesofnewerth.com/showthread.php?481413-SoulReaperBot-(v0-1)]
+(SoulReaperBot (v0.2))[http://forums.heroesofnewerth.com/showthread.php?481413-SoulReaperBot-(v0-2)]
+
+v 0.2
+-----
+* Will now use Ring of Sorcery - code taken from BeheBot by Djulio
+* Will now heal on the way back to the well if at low health (so he that if he is getting chased, he stills heals himself)
+* Removed a bunch of debug statements
 
 v 0.1
 -----
