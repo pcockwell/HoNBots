@@ -3,7 +3,15 @@ SoulReaperBot Changelog
 
 Release Thread
 --------------
-(SoulReaperBot (v0.2))[http://forums.heroesofnewerth.com/showthread.php?481413-SoulReaperBot-(v0-2)]
+(SoulReaperBot (v0.3))[http://forums.heroesofnewerth.com/showthread.php?481413-SoulReaperBot-(v0-3)]
+
+v 0.3
+-----
+* Significant last hitting improvements
+* Test results for 10 minutes of solo mid freefarm:
+    * Before: 27/26, 24/24
+    * After: 38/41, 46/43
+* Overall improvement appears to be approximately a 50% increase in effectiveness last hitting and denying
 
 v 0.2
 -----
