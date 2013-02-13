@@ -986,14 +986,14 @@ local function GetExpectedDamageOnCreep(unitTargetCreep)
 
             end
             if bDebugEchos then BotEcho("nCreepTotalTimeToDamage: " .. nCreepTotalTimeToDamage) end
-            if bDebugEchos then BotEcho end("nTotalTimeToDamage: " .. nTotalTimeToDamage) end
+            if bDebugEchos then BotEcho("nTotalTimeToDamage: " .. nTotalTimeToDamage) end
 
             --If the creep won't be able to do damage before us, don't count any attacks
             if nCreepTotalTimeToDamage < nTotalTimeToDamage then
                 --Otherwise, it will clearly have 1 attack
                 --And it will also do damage the equivalent of once more every AttackCooldown 
                 -- AFTER that initial attack
-                if bDebugEchos then BotEcho("nCreepAttacks: " .. nCreepAttacks)
+                if bDebugEchos then BotEcho("nCreepAttacks: " .. nCreepAttacks) end
                 if bDebugEchos then BotEcho("nCreepAttacks: 1 + " .. math.floor((nTotalTimeToDamage - nCreepTotalTimeToDamage) / unitCreep:GetAdjustedAttackCooldown())) end
                 if bDebugEchos then BotEcho("nTotalTimeToDamage - nCreepTotalTimeToDamage: " .. nTotalTimeToDamage - nCreepTotalTimeToDamage)  end
                 if bDebugEchos then BotEcho("unitCreep:GetAdjustedAttackCooldown(): " .. unitCreep:GetAdjustedAttackCooldown()) end
