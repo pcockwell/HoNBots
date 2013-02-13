@@ -11,4 +11,4 @@ SoulReaperBot
 Recent Releases
 ==============
 
-SoulReaperBot v0.1 - (Changelog)[soulreaper/CHANGELOG.rst]
+SoulReaperBot v0.3 - (Changelog)[soulreaper/CHANGELOG.md]
