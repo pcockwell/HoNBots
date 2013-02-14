@@ -3,7 +3,22 @@ SoulReaperBot Changelog
 
 Release Thread
 --------------
-(SoulReaperBot (v0.3))[http://forums.heroesofnewerth.com/showthread.php?481413-SoulReaperBot-(v0-3)]
+(SoulReaperBot (v0.4))[http://forums.heroesofnewerth.com/showthread.php?481413-SoulReaperBot-(v0-4)]
+
+v 0.4
+-----
+* Changed harass bonus for successful usage of ultimate
+* Modified combo for ultimate
+    * Will now ultimate, (attack if ready) and move towards the target position (without interrupting any attack orders)
+    * Result is that the bot attempts to close ground without sacrificing damage to get a heal off
+* Added significant laning harass code
+    * 1v1
+        * Will check regen, health percents, and enemy hero attack type and damage and adjust harass utility accordingly
+        * Will take levels into account and adjust utility accordingly
+    * 1+ man disadvantage
+        * Will play more passive - especially if enemies are ranged
+    * 1+ man advantage
+        * Will play more agressive - especially if enemies are melee
 
 v 0.3
 -----

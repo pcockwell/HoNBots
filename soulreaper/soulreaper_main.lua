@@ -165,9 +165,9 @@ object.nBarrierUp = 16
  
 -- These are bonus agression points that are applied to the bot upon successfully using a skill/item
 object.nHealUse = 5
-object.nExecute1Use = 20
-object.nExecute2Use = 30
-object.nExecute3Use = 40
+object.nExecute1Use = 30
+object.nExecute2Use = 40
+object.nExecute3Use = 50
 object.nSheepUse = 18
 object.nFrostfieldUse = 10
 object.nBarrierUse = 22
@@ -285,8 +285,8 @@ core.FindItems = funcFindItemsOverride
 ------------------------------------------------------
 -- @param: iunitentity hero
 -- @return: number
-local function CustomHarassUtilityOverride(hero) --how much to harrass, doesn't change combo order or anything
-    local nUtil = 0 --midly aggressive
+local function CustomHarassUtilityOverride(enemyHero) --how much to harrass, doesn't change combo order or anything
+    local nUtil = 0
     
     --BotEcho("Rethinking hass")
     
@@ -317,7 +317,172 @@ local function CustomHarassUtilityOverride(hero) --how much to harrass, doesn't 
     if object.itemBarrierIdol and object.itemBarrierIdol:CanActivate() then
         nUtil = nUtil + object.nBarrierUp
     end
+
+    --Advanced harrass utils
+    local tNearbyAllyHeroes = core.localUnits['AllyHeroes']
+    local nNearbyAllyHeroes = 1
+    local tNearbyEnemyHeroes = core.localUnits['EnemyHeroes']
+    local nNearbyEnemyHeroes = 0
+
+    for i, unitEnemyHero in pairs(tNearbyEnemyHeroes) do
+        nNearbyEnemyHeroes = nNearbyEnemyHeroes + 1
+    end
     
+    for i, unitAllyHero in pairs(tNearbyAllyHeroes) do
+        nNearbyAllyHeroes = nNearbyAllyHeroes + 1
+    end
+
+    local nSelfHealthPercent = unitSelf:GetHealthPercent()
+    local nSelfManaPercent = unitSelf:GetManaPercent()
+    local nSelfHealth = unitSelf:GetHealth()
+    local nSelfMana = unitSelf:GetMana()
+    local nSelfLevel = unitSelf:GetLevel()
+    local tSelfInventory = unitSelf:GetInventory()
+    
+    --Check regen
+    local tRunes = core.InventoryContains(tSelfInventory, "Item_RunesOfTheBlight")
+    local tHealthPots = core.InventoryContains(tSelfInventory, "Item_HealthPotion")
+    local nSelfCountRegenItems = 0
+
+    for i, itemRunes in pairs(tRunes) do
+        nSelfCountRegenItems = nSelfCountRegenItems + 1
+    end
+
+    for i, itemPots in pairs(tHealthPots) do
+        nSelfCountRegenItems = nSelfCountRegenItems + 1
+    end
+
+    --1v1
+    if nNearbyEnemyHeroes == 1 then
+        local unitEnemyHero = enemyHero
+        local sEnemyAttackType = unitEnemyHero:GetAttackType()
+        local nEnemyHealthPercent = unitEnemyHero:GetHealthPercent()
+        local nEnemyManaPercent = unitSelf:GetManaPercent()
+        local nEnemyHealth = unitEnemyHero:GetHealth()
+        local nEnemyMana = unitEnemyHero:GetMana()
+        local nEnemyLevel = unitEnemyHero:GetLevel()
+        local tEnemyInventory = unitEnemyHero:GetInventory()
+        
+        --Check regen
+        local tEnemyRunes = core.InventoryContains(tEnemyInventory, "Item_RunesOfTheBlight")
+        local tEnemyHealthPots = core.InventoryContains(tEnemyInventory, "Item_HealthPotion")
+        local nEnemyCountRegenItems = 0
+
+        for i, itemRunes in pairs(tEnemyRunes) do
+            nEnemyCountRegenItems = nEnemyCountRegenItems + 1
+        end
+
+        for i, itemPots in pairs(tEnemyHealthPots) do
+            nEnemyCountRegenItems = nEnemyCountRegenItems + 1
+        end
+
+        --We have higher damage
+        if unitSelf:GetFinalAttackDamageMin() > unitEnemyHero:GetFinalAttackDamageMin() then
+            BotEcho("Have higher attack damage")
+            nUtil = nUtil + (unitSelf:GetFinalAttackDamageMin() - unitEnemyHero:GetFinalAttackDamageMin())
+
+            --Adjust utilities based on regen, health, and enemy attack type
+            if unitSelf:GetLevel() <= 6 and nSelfCountRegenItems > nEnemyCountRegenItems then
+                BotEcho("  and more regen")
+                nUtil = nUtil + 4
+            end
+
+            if nSelfHealthPercent > nEnemyHealthPercent + 0.2 then
+                BotEcho("  and 20% higher health")
+                nUtil = nUtil + 2
+            elseif nEnemyHealthPercent > nSelfHealthPercent + 0.2 then
+                BotEcho("  and 20% lower health")
+                nUtil = nUtil - 2
+            end
+
+            if nSelfManaPercent > nEnemyManaPercent + 0.2 then
+                BotEcho("  and 20% higher mana")
+                nUtil = nUtil + 2
+            elseif nEnemyManaPercent > nSelfManaPercent + 0.2 then
+                BotEcho("  and 20% lower mana")
+                nUtil = nUtil - 2
+            end
+
+            if sEnemyAttackType == "melee" then
+                BotEcho("  and enemy is melee")
+                nUtil = nUtil + 2
+            end
+
+        --They have higher damage - don't trade hits
+        else
+            BotEcho("Enemy has higher attack damage")
+            --Ranged hero with higher attack damage - be careful
+            if sEnemyAttackType == "ranged" then
+                BotEcho("  and enemy is ranged")
+                nUtil = nUtil - 5
+            else
+                BotEcho("  and enemy is melee")
+                nUtil = nUtil + 2
+                if nEnemyLevel < 6 then
+                    nUtil = nUtil + 2
+                end
+            end
+
+            --Adjust utilities based on regen, health, and enemy attack type
+            if unitSelf:GetLevel() <= 6 and nSelfCountRegenItems > nEnemyCountRegenItems then
+                BotEcho("  but we have more regen")
+                nUtil = nUtil + 4
+            end
+
+            if nSelfHealthPercent > nEnemyHealthPercent + 0.2 then
+                BotEcho("  but we have 20% higher health")
+                nUtil = nUtil + 2
+            elseif nEnemyHealthPercent > nSelfHealthPercent + 0.2 then
+                BotEcho("  but we have 20% lower health")
+                nUtil = nUtil - 2
+            end
+
+            if nSelfManaPercent > nEnemyManaPercent + 0.2 then
+                BotEcho("  but we have 20% higher mana")
+                nUtil = nUtil + 2
+            elseif nEnemyManaPercent > nSelfManaPercent + 0.2 then
+                BotEcho("  but we have 20% lower mana")
+                nUtil = nUtil - 2
+            end
+        end
+
+        --Take advantage of being higher level, but dont go crazy
+        local nLevelAdvantageBonus = 2 * (nSelfLevel - nEnemyLevel)
+        nLevelAdvantageBonus = math.max(nLevelAdvantageBonus, 10)
+
+        nUtil = nUtil + nLevelAdvantageBonus
+
+    --2v1 (or more) for them
+    elseif nNearbyEnemyHeroes > nNearbyAllyHeroes then
+        local nHarassDecrease = 5
+
+        for i, unitEnemyHero in pairs(tNearbyEnemyHeroes) do
+            if unitEnemyHero:GetAttackType() == "ranged" then
+                nHarassDecrease = nHarassDecrease + 5
+            end
+        end
+
+        if unitSelf:GetLevel() <= 6 then
+            nHarassDecrease = nHarassDecrease + ( (2 - nSelfCountRegenItems) * 5 )
+        end
+
+        nUtil = nUtil - nHarassDecrease
+
+    --2v1 (or more) for us
+    elseif nNearbyAllyHeroes > nNearbyEnemyHeroes then
+        local nHarassIncrease = 10
+
+        for i, unitEnemyHero in pairs(tNearbyEnemyHeroes) do
+            if unitEnemyHero:GetAttackType() == "melee" then
+                nHarassIncrease = nHarassIncrease + 5
+            end
+        end
+
+        nHarassIncrease = nHarassIncrease + 10 * (nNearbyAllyHeroes - nNearbyEnemyHeroes)
+
+        nUtil = nUtil - nHarassIncrease
+    end
+
     --BotEcho("health:" .. hero:GetHealth());
     --local potentialDamage = (skills.abilJudgement:GetLevel()*60+40+skills.abilW:GetLevel()*75)/hero:GetMagicResistance()+unitSelf:GetFinalAttackDamageMin()*2/hero:GetPhysicalResistance()
     --BotEcho("potential damage:" .. potentialDamage );
@@ -409,11 +574,7 @@ local function GetPotentialDamage(unitTarget, bExecutionFirst)
         Take an estimate at how many auto attacks we can get in once we cast
         Demonic Execution and the target gets stunned for 1.5s
     ]]--
-    if nAttackRangeSq > nTargetDistanceSq  * 0.25 then
-        nPotentialAttacks = nPotentialAttacks + 4
-    elseif nAttackRangeSq > nTargetDistanceSq * 0.50 then
-        nPotentialAttacks = nPotentialAttacks + 3
-    elseif nAttackRangeSq > nTargetDistanceSq * 0.75 then
+    if nAttackRangeSq > nTargetDistanceSq * 0.50 then
         nPotentialAttacks = nPotentialAttacks + 2
     elseif nAttackRangeSq > nTargetDistanceSq then
         nPotentialAttacks = nPotentialAttacks + 1
@@ -507,12 +668,15 @@ local function HarassHeroExecuteOverride(botBrain)
         --Demonic Execution
         local nExecuteLevelThreshold = botBrain.nExecute1Threshold
         local nExecuteLevelDamageMultiplier = 0.4
+        local nExecuteLevelUseHarassBonus = botBrain.nExecute1Use
         if abilDemonicExecution:GetLevel() == 2 then
             nExecuteLevelThreshold = botBrain.nExecute2Threshold
             nExecuteLevelDamageMultiplier = 0.6
+            nExecuteLevelUseHarassBonus = botBrain.nExecute2Use
         elseif abilDemonicExecution:GetLevel() == 3 then
             nExecuteLevelThreshold = botBrain.nExecute3Threshold
             nExecuteLevelDamageMultiplier = 0.9
+            nExecuteLevelUseHarassBonus = botBrain.nExecute3Use
         end
         if nLastHarassUtility > nExecuteLevelThreshold then
             if bDebugHarassUtility then BotEcho("  No action yet, checking demonic execution - current threshold is " .. nExecuteLevelThreshold) end
@@ -528,7 +692,14 @@ local function HarassHeroExecuteOverride(botBrain)
 
                 if abilDemonicExecution:CanActivate() and unitTarget:GetHealth() < nPotentialDamage then
                 if bDebugEchos then BotEcho("USING SKILL DEMONIC EXECUTION!!!!") end
-                    bActionTaken = core.OrderAbilityEntity(botBrain, abilDemonicExecution, unitTarget)
+                    core.OrderAbilityEntity(botBrain, abilDemonicExecution, unitTarget)
+                    --Just used demonic execution, so up the HarassUtility as needed,
+                    -- and move towards the target, but still attack while doing so
+                    nLastHarassUtility = nLastHarassUtility + nExecuteLevelUseHarassBonus
+                    if unitSelf:IsAttackReady() then
+                        core.OrderAttackClamp(botBrain, unitSelf, unitTarget)
+                    end
+                    core.OrderMoveToPosClamp(botBrain, unitSelf, vecTargetPosition, false)
                 end
             end
         end
@@ -628,7 +799,7 @@ function behaviorLib.HealUtility(botBrain)
         for key, hero in pairs(tTargets) do
             --Don't heal ourself if we are going to head back to the well anyway, 
             --  as it could cause us to retrace half a walkback
-            if hero:GetUniqueID() ~= unitSelf:GetUniqueID() or (unitSelf:GetHealthPercent() * 100 < 25) or core.GetCurrentBehaviorName(botBrain) ~= "HealAtWell" then
+            if hero:GetUniqueID() ~= unitSelf:GetUniqueID() or (unitSelf:GetHealthPercent() * 100 < 20) or core.GetCurrentBehaviorName(botBrain) ~= "HealAtWell" then
                 local nCurrentUtility = 0
                 
                 local nHealthUtility = behaviorLib.HealHealthUtilityFn(hero) * behaviorLib.nHealHealthUtilityMul
@@ -878,7 +1049,7 @@ function behaviorLib.GetCreepAttackTarget(botBrain, unitEnemyCreep, unitAllyCree
 
     core.nHarassBonus = 0
 
-    local bDebugEchos = true
+    local bDebugEchos = false
     -- no predictive last hitting, just wait and react when they have 1 hit left
     -- prefers LH over deny
 
