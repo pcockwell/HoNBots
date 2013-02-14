@@ -3,7 +3,7 @@ SoulReaperBot Changelog
 
 Release Thread
 --------------
-[SoulReaperBot (v0.4)](http://forums.heroesofnewerth.com/showthread.php?481413-SoulReaperBot-(v0-4))
+[SoulReaperBot (v0.4)]( http://forums.heroesofnewerth.com/showthread.php?481413-SoulReaperBot-(v0-4) )
 
 v 0.4
 -----
