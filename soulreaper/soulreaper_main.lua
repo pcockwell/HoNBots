@@ -469,7 +469,7 @@ local function CustomHarassUtilityOverride(enemyHero) --how much to harrass, doe
         --Increase harass utility by 5 for every hero more that we have over them
         nHarassIncrease = nHarassIncrease + 5 * (nNearbyAllyHeroes - nNearbyEnemyHeroes)
 
-        nUtil = nUtil - nHarassIncrease
+        nUtil = nUtil + nHarassIncrease
     end
  
     return nUtil -- no desire to attack AT ALL if 0.
@@ -685,10 +685,10 @@ local function HarassHeroExecuteOverride(botBrain)
     end
 
     --Judgement
-    local nJudgementDamage = 0
+    local nJudgementDamage = abilJudgement:GetLevel() * 70
     local nTargetMagicResistance = unitTarget:GetMagicResistance()
     if unitTarget then
-        nJudgementDamage = abilJudgement:GetLevel() * 70 * (1 - nTargetMagicResistance)
+        nJudgementDamage = nJudgementDamage * (1 - nTargetMagicResistance)
     end 
 
     if nLastHarassUtility > botBrain.nHealThreshold or nJudgementDamage > unitTarget:GetHealth() then
