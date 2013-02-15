@@ -1,7 +1,10 @@
--- Pebbs v0.1
--- This bot represent the BARE minimum required for HoN to spawn a bot
--- and contains some very basic overrides you can fill in
---
+-- SoulReaperBot v0.4
+
+--TODO:
+--  Test frostfield and barrier idol
+--  Test 2v1 scenarios
+--  Optimization passthrough
+--  Purchasing behavior
 
 --####################################################################
 --####################################################################
@@ -131,7 +134,6 @@ function object:SkillBuild()
 end
 
 
-local nHiding=false;
 ------------------------------------------------------
 --            onthink override                      --
 -- Called every bot tick, custom onthink code here  --
@@ -195,22 +197,24 @@ function object:oncombateventOverride(EventData)
         if EventData.InflictorName == "Ability_HellDemon1" then
             nAddBonus = nAddBonus + object.nHealUse
         elseif EventData.InflictorName == "Ability_HellDemon4" then
+            local nExecutionLevel = skills.abilDemonicExecution:GetLevel()
             local nExecuteUseBonus = object.nExecute1Use
-            if skills.abilDemonicExecution:GetLevel() == 2 then
+            if nExecutionLevel == 2 then
                 nExecuteUseBonus = object.nExecute2Use
-            elseif skills.abilDemonicExecution:GetLevel() == 3 then
+            elseif nExecutionLevel == 3 then
                 nExecuteUseBonus = object.nExecute3Use
             end
             nAddBonus = nAddBonus + nExecuteUseBonus
         end
     elseif EventData.Type == "Item" then
-        if core.itemSheepstick ~= nil and EventData.SourceUnit == core.unitSelf:GetUniqueID() and EventData.InflictorName == core.itemSheepstick:GetName() then
+        local nSelfUniqueId = core.unitSelf:GetUniqueID()
+        if core.itemSheepstick ~= nil and EventData.SourceUnit == nSelfUniqueId and EventData.InflictorName == core.itemSheepstick:GetName() then
             nAddBonus = nAddBonus + self.nSheepUse
         end
-        if core.itemFrostfieldPlate ~= nil and EventData.SourceUnit == core.unitSelf:GetUniqueID() and EventData.InflictorName == core.itemFrostfieldPlate:GetName() then
+        if core.itemFrostfieldPlate ~= nil and EventData.SourceUnit == nSelfUniqueId and EventData.InflictorName == core.itemFrostfieldPlate:GetName() then
             nAddBonus = nAddBonus + self.nFrostfieldUse
         end
-        if core.itemBarrierIdol ~= nil and EventData.SourceUnit == core.unitSelf:GetUniqueID() and EventData.InflictorName == core.itemBarrierIdol:GetName() then
+        if core.itemBarrierIdol ~= nil and EventData.SourceUnit == nSelfUniqueId and EventData.InflictorName == core.itemBarrierIdol:GetName() then
             nAddBonus = nAddBonus + self.nBarrierUse
         end
     end
@@ -256,20 +260,16 @@ local function funcFindItemsOverride(botBrain)
             if curItem then
                 if core.itemRoT == nil and curItem:GetName() == "Item_ManaRegen3" then
                     core.itemRoT = core.WrapInTable(curItem)
-                end
-                if core.itemRoS == nil and curItem:GetName() == "Item_Replenish" then
+                elseif core.itemRoS == nil and curItem:GetName() == "Item_Replenish" then
                     core.itemRoS = core.WrapInTable(curItem)
                     core.itemRoS.nReplenishValue = 135
                     core.itemRoS.nRadius = 500
-                end
-                if core.itemSheepstick == nil and curItem:GetName() == "Item_Morph" then
+                elseif core.itemSheepstick == nil and curItem:GetName() == "Item_Morph" then
                     core.itemSheepstick = core.WrapInTable(curItem)
-                end
-                if core.itemFrostfieldPlate == nil and curItem:GetName() == "Item_FrostfieldPlate" then
+                elseif core.itemFrostfieldPlate == nil and curItem:GetName() == "Item_FrostfieldPlate" then
                     core.itemFrostfieldPlate = core.WrapInTable(curItem)
                     core.itemFrostfieldPlate.nRadius = 1000
-                end
-                if core.itemBarrierIdol == nil and curItem:GetName() == "Item_BarrierIdol" then
+                eelseif core.itemBarrierIdol == nil and curItem:GetName() == "Item_BarrierIdol" then
                     core.itemBarrierIdol = core.WrapInTable(curItem)
                 end
             end
@@ -297,10 +297,11 @@ local function CustomHarassUtilityOverride(enemyHero) --how much to harrass, doe
     end
  
     if skills.abilDemonicExecution:CanActivate() then
+        local nExecutionLevel = skills.abilDemonicExecution:GetLevel()
         local nExecuteUpBonus = object.nExecute1Up
-        if skills.abilDemonicExecution:GetLevel() == 2 then
+        if nExecutionLevel == 2 then
             nExecuteUseBonus = object.nExecute2Up
-        elseif skills.abilDemonicExecution:GetLevel() == 3 then
+        elseif nExecutionLevel == 3 then
             nExecuteUseBonus = object.nExecute3Up
         end
         nUtil = nUtil + nExecuteUpBonus
@@ -318,14 +319,23 @@ local function CustomHarassUtilityOverride(enemyHero) --how much to harrass, doe
         nUtil = nUtil + object.nBarrierUp
     end
 
+    --[Difficulty: Easy] Don't do harrass bonuses
+    if core.nDifficulty == core.nEASY_DIFFICULTY then
+        return nUtil;
+    end     
+
     --Advanced harrass utils
     local tNearbyAllyHeroes = core.localUnits['AllyHeroes']
     local nNearbyAllyHeroes = 1
     local tNearbyEnemyHeroes = core.localUnits['EnemyHeroes']
     local nNearbyEnemyHeroes = 0
+    local nMeleeEnemies = 0
 
     for i, unitEnemyHero in pairs(tNearbyEnemyHeroes) do
         nNearbyEnemyHeroes = nNearbyEnemyHeroes + 1
+        if unitEnemyHero:GetAttackType() == "melee" then
+            nMeleeEnemies = nMeleeEnemies + 1
+        end
     end
     
     for i, unitAllyHero in pairs(tNearbyAllyHeroes) do
@@ -338,6 +348,7 @@ local function CustomHarassUtilityOverride(enemyHero) --how much to harrass, doe
     local nSelfMana = unitSelf:GetMana()
     local nSelfLevel = unitSelf:GetLevel()
     local tSelfInventory = unitSelf:GetInventory()
+    local nSelfMinDamage = unitSelf:GetFinalAttackDamageMin()
     
     --Check regen
     local tRunes = core.InventoryContains(tSelfInventory, "Item_RunesOfTheBlight")
@@ -357,11 +368,12 @@ local function CustomHarassUtilityOverride(enemyHero) --how much to harrass, doe
         local unitEnemyHero = enemyHero
         local sEnemyAttackType = unitEnemyHero:GetAttackType()
         local nEnemyHealthPercent = unitEnemyHero:GetHealthPercent()
-        local nEnemyManaPercent = unitSelf:GetManaPercent()
+        local nEnemyManaPercent = unitEnemyHero:GetManaPercent()
         local nEnemyHealth = unitEnemyHero:GetHealth()
         local nEnemyMana = unitEnemyHero:GetMana()
         local nEnemyLevel = unitEnemyHero:GetLevel()
         local tEnemyInventory = unitEnemyHero:GetInventory()
+        local nEnemyMinDamage = unitEnemyHero:GetFinalAttackDamageMin()
         
         --Check regen
         local tEnemyRunes = core.InventoryContains(tEnemyInventory, "Item_RunesOfTheBlight")
@@ -377,73 +389,49 @@ local function CustomHarassUtilityOverride(enemyHero) --how much to harrass, doe
         end
 
         --We have higher damage
-        if unitSelf:GetFinalAttackDamageMin() > unitEnemyHero:GetFinalAttackDamageMin() then
-            BotEcho("Have higher attack damage")
-            nUtil = nUtil + (unitSelf:GetFinalAttackDamageMin() - unitEnemyHero:GetFinalAttackDamageMin())
+        if nSelfMinDamage > nEnemyMinDamage then
+            nUtil = nUtil + (nSelfMinDamage - nEnemyMinDamage)
 
-            --Adjust utilities based on regen, health, and enemy attack type
-            if unitSelf:GetLevel() <= 6 and nSelfCountRegenItems > nEnemyCountRegenItems then
-                BotEcho("  and more regen")
+            --Adjust utilities based on regen, health, mana, and enemy attack type
+            if nSelfLevel <= 6 and nSelfCountRegenItems > nEnemyCountRegenItems then
                 nUtil = nUtil + 4
             end
 
-            if nSelfHealthPercent > nEnemyHealthPercent + 0.2 then
-                BotEcho("  and 20% higher health")
-                nUtil = nUtil + 2
-            elseif nEnemyHealthPercent > nSelfHealthPercent + 0.2 then
-                BotEcho("  and 20% lower health")
-                nUtil = nUtil - 2
-            end
+            --1 Harass utility point per 10% difference in health (plus or minus)
+            nUtil = nUtil + 10 * (nSelfHealthPercent - nEnemyHealthPercent)
 
-            if nSelfManaPercent > nEnemyManaPercent + 0.2 then
-                BotEcho("  and 20% higher mana")
-                nUtil = nUtil + 2
-            elseif nEnemyManaPercent > nSelfManaPercent + 0.2 then
-                BotEcho("  and 20% lower mana")
-                nUtil = nUtil - 2
-            end
+            --1 Harass utility point per 10% difference in mana (plus or minus)
+            nUtil = nUtil + 10 * (nSelfManaPercent - nEnemyManaPercent)
 
+            --We have higher damage and enemy is melee
             if sEnemyAttackType == "melee" then
-                BotEcho("  and enemy is melee")
-                nUtil = nUtil + 2
+                nUtil = nUtil + 5
             end
 
         --They have higher damage - don't trade hits
         else
-            BotEcho("Enemy has higher attack damage")
             --Ranged hero with higher attack damage - be careful
             if sEnemyAttackType == "ranged" then
-                BotEcho("  and enemy is ranged")
                 nUtil = nUtil - 5
+            --Melee hero with higher damage
             else
-                BotEcho("  and enemy is melee")
-                nUtil = nUtil + 2
                 if nEnemyLevel < 6 then
+                    nUtil = nUtil + 4
+                else
                     nUtil = nUtil + 2
                 end
             end
 
-            --Adjust utilities based on regen, health, and enemy attack type
-            if unitSelf:GetLevel() <= 6 and nSelfCountRegenItems > nEnemyCountRegenItems then
-                BotEcho("  but we have more regen")
+            --Adjust utilities based on regen, health, mana, and enemy attack type
+            if nSelfLevel <= 6 and nSelfCountRegenItems > nEnemyCountRegenItems then
                 nUtil = nUtil + 4
             end
 
-            if nSelfHealthPercent > nEnemyHealthPercent + 0.2 then
-                BotEcho("  but we have 20% higher health")
-                nUtil = nUtil + 2
-            elseif nEnemyHealthPercent > nSelfHealthPercent + 0.2 then
-                BotEcho("  but we have 20% lower health")
-                nUtil = nUtil - 2
-            end
+            --1 Harass utility point per 10% difference in health (plus or minus)
+            nUtil = nUtil + 10 * (nSelfHealthPercent - nEnemyHealthPercent)
 
-            if nSelfManaPercent > nEnemyManaPercent + 0.2 then
-                BotEcho("  but we have 20% higher mana")
-                nUtil = nUtil + 2
-            elseif nEnemyManaPercent > nSelfManaPercent + 0.2 then
-                BotEcho("  but we have 20% lower mana")
-                nUtil = nUtil - 2
-            end
+            --1 Harass utility point per 10% difference in mana (plus or minus)
+            nUtil = nUtil + 10 * (nSelfManaPercent - nEnemyManaPercent)
         end
 
         --Take advantage of being higher level, but dont go crazy
@@ -456,13 +444,15 @@ local function CustomHarassUtilityOverride(enemyHero) --how much to harrass, doe
     elseif nNearbyEnemyHeroes > nNearbyAllyHeroes then
         local nHarassDecrease = 5
 
+        --For every ranged hero they have, become more passive
         for i, unitEnemyHero in pairs(tNearbyEnemyHeroes) do
             if unitEnemyHero:GetAttackType() == "ranged" then
                 nHarassDecrease = nHarassDecrease + 5
             end
         end
 
-        if unitSelf:GetLevel() <= 6 then
+        --If we have very little regen, be more passive
+        if nSelfLevel <= 6 then
             nHarassDecrease = nHarassDecrease + ( (2 - nSelfCountRegenItems) * 5 )
         end
 
@@ -472,26 +462,16 @@ local function CustomHarassUtilityOverride(enemyHero) --how much to harrass, doe
     elseif nNearbyAllyHeroes > nNearbyEnemyHeroes then
         local nHarassIncrease = 10
 
-        for i, unitEnemyHero in pairs(tNearbyEnemyHeroes) do
-            if unitEnemyHero:GetAttackType() == "melee" then
-                nHarassIncrease = nHarassIncrease + 5
-            end
-        end
+        --Add up to 5 harass utility, depending on the makeup of enemies
+        -- The higher percent melee heroes they have, the more agressive
+        nHarassIncrease = nHarassIncrease + 5 * (nMeleeEnemies / nNearbyEnemyHeroes)
 
-        nHarassIncrease = nHarassIncrease + 10 * (nNearbyAllyHeroes - nNearbyEnemyHeroes)
+        --Increase harass utility by 5 for every hero more that we have over them
+        nHarassIncrease = nHarassIncrease + 5 * (nNearbyAllyHeroes - nNearbyEnemyHeroes)
 
         nUtil = nUtil - nHarassIncrease
     end
-
-    --BotEcho("health:" .. hero:GetHealth());
-    --local potentialDamage = (skills.abilJudgement:GetLevel()*60+40+skills.abilW:GetLevel()*75)/hero:GetMagicResistance()+unitSelf:GetFinalAttackDamageMin()*2/hero:GetPhysicalResistance()
-    --BotEcho("potential damage:" .. potentialDamage );
-    
-    --calculate whether a kill is possible and probable.
-    --[[if (unitSelf:GetMana()>240 and skills.abilJudgement:CanActivate() and skills.abilW:CanActivate() and hero:GetHealth()< potentialDamage ) then
-        nUtil=100
-    end]]--Old pebbs bot code
-    -- if hero hp is low, combo up and in range, perhaps if someone is nearby and ping?(?)  
+ 
     return nUtil -- no desire to attack AT ALL if 0.
 end
 -- assisgn custom Harrass function to the behaviourLib object
@@ -518,7 +498,7 @@ local function GetPotentialDamage(unitTarget, bExecutionFirst)
     local vecTargetPosition = unitTarget:GetPosition()
     local nTargetDistanceSq = Vector3.Distance2DSq(vecMyPosition, vecTargetPosition)
 
-    local nCurMana = unitSelf:GetMana()
+    local nSelfMana = unitSelf:GetMana()
 
     --Skills
     local abilJudgement = skills.abilJudgement
@@ -527,6 +507,10 @@ local function GetPotentialDamage(unitTarget, bExecutionFirst)
     if not abilJudgement then BotEcho("Can't find abilJudgement") end
     if not abilDemonicExecution then BotEcho("Can't find abilDemonicExecution") end
 
+    --Get mana costs
+    local nJudgementManaCost = abilJudgement:GetManaCost()
+    local nExecutionManaCost = abilDemonicExecution:GetManaCost()
+
     --Get skill ranges
     local nExecutionRangeSq = abilDemonicExecution:GetRange()
     nExecutionRangeSq = nExecutionRangeSq * nExecutionRangeSq
@@ -534,40 +518,42 @@ local function GetPotentialDamage(unitTarget, bExecutionFirst)
     nJudgementRangeSq = nJudgementRangeSq * nJudgementRangeSq
 
     --Determine what the Demonic Execution damage multiplier is
+    local nExecutionLevel = abilDemonicExecution:GetLevel()
     local nExecuteLevelDamageMultiplier = 0.4
-    if abilDemonicExecution:GetLevel() == 2 then
+    if nExecutionLevel == 2 then
         nExecuteLevelDamageMultiplier = 0.6
-    elseif abilDemonicExecution:GetLevel() == 3 then
+    elseif nExecutionLevel == 3 then
         nExecuteLevelDamageMultiplier = 0.9
     end
 
     local nTargetMagicResistance = unitTarget:GetMagicResistance()
     local nTargetPhysResistance = unitTarget:GetPhysicalResistance()
-    local nAttackDamage = unitSelf:GetFinalAttackDamageMin() * nTargetPhysResistance
+    local nAttackDamage = unitSelf:GetFinalAttackDamageMin() * (1 - nTargetPhysResistance)
     local nTargetMissingHealth = unitTarget:GetMaxHealth() - unitTarget:GetHealth()
     local nPotentialDamage = 0
     local nPotentialAttacks = 1
 
-    if not bExecutionFirst and abilJudgement:CanActivate() and nTargetDistanceSq < nJudgementRangeSq and nCurMana > abilJudgement:GetManaCost() then
+    --Determine what the Judgement damage is
+    local nJudgementLevel = abilJudgement:GetLevel()
+    local nJudgementDamage = nJudgementLevel * 70 * (1 - nTargetMagicResistance)
+
+    if not bExecutionFirst and abilJudgement:CanActivate() and nTargetDistanceSq < nJudgementRangeSq and nSelfMana > nJudgementManaCost then
         --If we aren't opening with Execution, assume we can cast a heal and apply an auto attack
-        local nJudgementDamage = abilJudgement:GetLevel() * 70 * (1 - nTargetMagicResistance)
-        nPotentialDamage = nPotentialDamage + nJudgementDamage + nAttackDamage
+        nPotentialDamage = nPotentialDamage + nJudgementDamage
 
         --Adjust the targets missing health for the damage we just did
-        nTargetMissingHealth = nTargetMissingHealth + nJudgementDamage + nAttackDamage
+        nTargetMissingHealth = nTargetMissingHealth + nJudgementDamage
 
         --Adjust for mana just used
-        nCurMana = nCurMana - abilJudgement:GetManaCost()
+        nSelfMana = nSelfMana - nJudgementManaCost
     end
 
-    if abilDemonicExecution:CanActivate() and nTargetDistanceSq < nExecutionRangeSq and nCurMana > abilDemonicExecution:GetManaCost() then
+    if abilDemonicExecution:CanActivate() and nTargetDistanceSq < nExecutionRangeSq and nSelfMana > nExecutionManaCost then
         --Calculate the amount of damage that can be dealt by casting Demonic Execution
         nPotentialDamage = (1 - nTargetMagicResistance) * nExecuteLevelDamageMultiplier * nTargetMissingHealth
-        --BotEcho("Missing health: " .. nTargetMissingHealth)
-        --BotEcho("Damage from ult: " .. nPotentialDamage)
 
         --Adjust for mana just used
-        nCurMana = nCurMana - abilDemonicExecution:GetManaCost()
+        nSelfMana = nSelfMana - nExecutionManaCost
     end
 
     --[[
@@ -575,21 +561,17 @@ local function GetPotentialDamage(unitTarget, bExecutionFirst)
         Demonic Execution and the target gets stunned for 1.5s
     ]]--
     if nAttackRangeSq > nTargetDistanceSq * 0.50 then
-        nPotentialAttacks = nPotentialAttacks + 2
-    elseif nAttackRangeSq > nTargetDistanceSq then
         nPotentialAttacks = nPotentialAttacks + 1
     end
 
-    nPotentialDamage = nPotentialDamage + nPotentialAttacks * nAttackDamage
-    --BotEcho("Damage from attacks: " .. nPotentialAttacks * nAttackDamage)    
+    nPotentialDamage = nPotentialDamage + nPotentialAttacks * nAttackDamage  
 
+    --DistanceWalkingSq is MoveSpeed (units/second) * number of seconds walking (1 second)
     local nDistanceWalkingSq = unitSelf:GetMoveSpeed()
     nDistanceWalkingSq = nDistanceWalkingSq * nDistanceWalkingSq
     --Put in another heal if we can walk in range in 1 second just for good measure
-    if abilJudgement:CanActivate() and nTargetDistanceSq - nDistanceWalkingSq < nJudgementRangeSq and nCurMana > abilJudgement:GetManaCost() then
-        nPotentialDamage = nPotentialDamage + abilJudgement:GetLevel() * 70 * (1 - nTargetMagicResistance)
-        --BotEcho("Damage from heal: " .. abilJudgement:GetLevel() * 70 * (1 - nTargetMagicResistance))  
-    end
+    if abilJudgement:CanActivate() and nTargetDistanceSq - nDistanceWalkingSq < nJudgementRangeSq and nSelfMana > nJudgementManaCost then
+        nPotentialDamage = nPotentialDamage + nJudgementDamage
 
     return nPotentialDamage
 end
@@ -602,7 +584,7 @@ end
 -- @return: none
 --
 local function HarassHeroExecuteOverride(botBrain)
-    local bDebugEchos = true
+    local bDebugEchos = false
     local bDebugHarassUtility = false and bDebugEchos
     
     local unitTarget = behaviorLib.heroTarget
@@ -613,12 +595,8 @@ local function HarassHeroExecuteOverride(botBrain)
     local unitSelf = core.unitSelf
     
     local vecMyPosition = unitSelf:GetPosition()
-    local nAttackRangeSq = core.GetAbsoluteAttackRangeToUnit(unitSelf, unitTarget)
-    nAttackRangeSq = nAttackRangeSq * nAttackRangeSq
-    local nMyExtraRange = core.GetExtraRange(unitSelf)
     
     local vecTargetPosition = unitTarget:GetPosition()
-    local nTargetExtraRange = core.GetExtraRange(unitTarget)
     local nTargetDistanceSq = Vector3.Distance2DSq(vecMyPosition, vecTargetPosition)
     --local bTargetRooted = unitTarget:IsStunned() or unitTarget:IsImmobilized() or unitTarget:GetMoveSpeed() < 200
     
@@ -634,46 +612,44 @@ local function HarassHeroExecuteOverride(botBrain)
     --since we are using an old pointer, ensure we can still see the target for entity targeting
     if core.CanSeeUnit(botBrain, unitTarget) then
         local bTargetVuln = unitTarget:IsStunned() or unitTarget:IsImmobilized()
+        core.FindItems()
     
         --Sheepstick
         if not bTargetVuln then 
-            core.FindItems()
             local itemSheepstick = core.itemSheepstick
             if itemSheepstick then
                 local nRange = itemSheepstick:GetRange()
                 if itemSheepstick:CanActivate() and nLastHarassUtility > botBrain.nSheepThreshold then
                     if nTargetDistanceSq < (nRange * nRange) then
                         if bDebugEchos then BotEcho("Using sheepstick") end
-                        bActionTaken = core.OrderItemEntityClamp(botBrain, unitSelf, itemSheepstick, unitTarget)
+                        bActionTaken = core.OrderItemEntityClamp(botBrain, unitSelf, itemSheepstick, unitTarget, false, bActionTaken)
                     end
                 end
             end
-        end
     
-        --Frostfield
-        if not bTargetVuln then 
-            core.FindItems()
+            --Frostfield
             local itemFrostfieldPlate = core.itemFrostfieldPlate
             if itemFrostfieldPlate then
                 local nRange = itemFrostfieldPlate:GetTargetRadius()
                 if itemFrostfieldPlate:CanActivate() and nLastHarassUtility > botBrain.nFrostfieldThreshold then
                     if nTargetDistanceSq < (nRange * nRange) * 0.9 then
                         if bDebugEchos then BotEcho("Using frostfield") end
-                        bActionTaken = core.OrderItemClamp(botBrain, unitSelf, itemFrostfieldPlate)
+                        bActionTaken = core.OrderItemClamp(botBrain, unitSelf, itemFrostfieldPlate, false, bActionTaken)
                     end
                 end
             end
         end
 
         --Demonic Execution
+        local nExecutionLevel = abilDemonicExecution:GetLevel()
         local nExecuteLevelThreshold = botBrain.nExecute1Threshold
         local nExecuteLevelDamageMultiplier = 0.4
         local nExecuteLevelUseHarassBonus = botBrain.nExecute1Use
-        if abilDemonicExecution:GetLevel() == 2 then
+        if nExecutionLevel == 2 then
             nExecuteLevelThreshold = botBrain.nExecute2Threshold
             nExecuteLevelDamageMultiplier = 0.6
             nExecuteLevelUseHarassBonus = botBrain.nExecute2Use
-        elseif abilDemonicExecution:GetLevel() == 3 then
+        elseif nExecutionLevel == 3 then
             nExecuteLevelThreshold = botBrain.nExecute3Threshold
             nExecuteLevelDamageMultiplier = 0.9
             nExecuteLevelUseHarassBonus = botBrain.nExecute3Use
@@ -691,15 +667,18 @@ local function HarassHeroExecuteOverride(botBrain)
                 end
 
                 if abilDemonicExecution:CanActivate() and unitTarget:GetHealth() < nPotentialDamage then
-                if bDebugEchos then BotEcho("USING SKILL DEMONIC EXECUTION!!!!") end
-                    core.OrderAbilityEntity(botBrain, abilDemonicExecution, unitTarget)
+                    if bDebugEchos then BotEcho("USING SKILL DEMONIC EXECUTION!!!!") end
+                    bActionTaken = core.OrderAbilityEntity(botBrain, abilDemonicExecution, unitTarget, bActionTaken)
+
                     --Just used demonic execution, so up the HarassUtility as needed,
                     -- and move towards the target, but still attack while doing so
                     nLastHarassUtility = nLastHarassUtility + nExecuteLevelUseHarassBonus
+
                     if unitSelf:IsAttackReady() then
-                        core.OrderAttackClamp(botBrain, unitSelf, unitTarget)
+                        core.OrderAttackClamp(botBrain, unitSelf, unitTarget, bActionTaken)
                     end
-                    core.OrderMoveToPosClamp(botBrain, unitSelf, vecTargetPosition, false)
+
+                    core.OrderMoveToPosClamp(botBrain, unitSelf, vecTargetPosition, false, bActionTaken)
                 end
             end
         end
@@ -707,8 +686,9 @@ local function HarassHeroExecuteOverride(botBrain)
 
     --Judgement
     local nJudgementDamage = 0
-    if unitTarget and unitTarget:GetMagicResistance() then
-        nJudgementDamage = abilJudgement:GetLevel() * 70 * (1 - unitTarget:GetMagicResistance())
+    local nTargetMagicResistance = unitTarget:GetMagicResistance()
+    if unitTarget then
+        nJudgementDamage = abilJudgement:GetLevel() * 70 * (1 - nTargetMagicResistance)
     end 
 
     if nLastHarassUtility > botBrain.nHealThreshold or nJudgementDamage > unitTarget:GetHealth() then
@@ -719,7 +699,7 @@ local function HarassHeroExecuteOverride(botBrain)
 
             if nTargetDistanceSq < (nRange * nRange) then
                 if bDebugEchos then BotEcho("USING SKILL JUDGEMENT!!!!") end
-                bActionTaken = core.OrderAbility(botBrain, abilJudgement)
+                bActionTaken = core.OrderAbility(botBrain, abilJudgement, true, bActionTaken)
             end
         end
     end
@@ -795,11 +775,14 @@ function behaviorLib.HealUtility(botBrain)
     local sAbilName = ""
     if abilJudgement and abilJudgement:CanActivate() then
         local tTargets = core.CopyTable(core.localUnits["AllyHeroes"])
-        tTargets[unitSelf:GetUniqueID()] = unitSelf --I am also a target
+        local nOwnID = unitSelf:GetUniqueID()
+        local bHealthLow = unitSelf:GetHealthPercent() < 0.20
+        local bHealAtWell = core.GetCurrentBehaviorName(botBrain) ~= "HealAtWell"
+        tTargets[nOwnID] = unitSelf --I am also a target
         for key, hero in pairs(tTargets) do
-            --Don't heal ourself if we are going to head back to the well anyway, 
-            --  as it could cause us to retrace half a walkback
-            if hero:GetUniqueID() ~= unitSelf:GetUniqueID() or (unitSelf:GetHealthPercent() * 100 < 20) or core.GetCurrentBehaviorName(botBrain) ~= "HealAtWell" then
+            --Don't heal ourself if we are going to head back to the well anyway,
+            -- as it could cause us to retrace half a walkback
+            if hero:GetUniqueID() ~= nOwnID or bHealthLow  or bHealAtWell then
                 local nCurrentUtility = 0
                 
                 local nHealthUtility = behaviorLib.HealHealthUtilityFn(hero) * behaviorLib.nHealHealthUtilityMul
@@ -930,12 +913,14 @@ function behaviorLib.ReplenishUtility(botBrain)
     local nTargetTimeToLive = nil
     local sAbilName = ""
     if itemRoS and itemRoS:CanActivate() then
-        local tTargets = core.CopyTable(core.localUnits["AllyHeroes"])     -- Get allies close to the bot
-        tTargets[unitSelf:GetUniqueID()] = unitSelf                     -- Identify bot as a target too
+        local tTargets = core.CopyTable(core.localUnits["AllyHeroes"])
+        local nOwnID = unitSelf:GetUniqueID()
+        local bHealAtWell = core.GetCurrentBehaviorName(botBrain) ~= "HealAtWell"
+        tTargets[nOwnID] = unitSelf --I am also a target
         for key, hero in pairs(tTargets) do
-            --Don't mana ourself if we are going to head back to the well anyway, 
-            --    as it could cause us to retrace half a walkback
-            if hero:GetUniqueID() ~= unitSelf:GetUniqueID() or core.GetCurrentBehaviorName(botBrain) ~= "HealAtWell" then
+            --Don't heal ourself if we are going to head back to the well anyway,
+            -- as it could cause us to retrace half a walkback
+            if hero:GetUniqueID() ~= nOwnID or bHealAtWell then
                 local nCurrentUtility = 0
                  
                 local nManaUtility = behaviorLib.ReplenishManaUtilityFn(hero) * behaviorLib.nReplenishManaUtilityMul
@@ -1006,14 +991,15 @@ tinsert(behaviorLib.tBehaviors, behaviorLib.ReplenishBehavior)
 
 function GetClosestEnemyHero(botBrain)
     local unitClosestHero = nil
-    local nClosestHeroDistSq = 99999*99999
+    local nClosestHeroDistSq = nil
+    local vecSelfPosition = core.unitSelf:GetPosition()
     --core.printGetTypeNameTable(HoN.GetHeroes(core.enemyTeam))
     for id, unitHero in pairs(HoN.GetHeroes(core.enemyTeam)) do
         if unitHero ~= nil then
             if core.CanSeeUnit(botBrain, unitHero) then
         
-                local nDistanceSq = Vector3.Distance2DSq(unitHero:GetPosition(), core.unitSelf:GetPosition())
-                if nDistanceSq < nClosestHeroDistSq then
+                local nDistanceSq = Vector3.Distance2DSq(unitHero:GetPosition(), vecSelfPosition)
+                if nClosestHeroDistSq == nil or nDistanceSq < nClosestHeroDistSq then
                     nClosestHeroDistSq = nDistanceSq
                     unitClosestHero = unitHero
                 end
@@ -1025,14 +1011,14 @@ function GetClosestEnemyHero(botBrain)
 end
 
 function IsTowerThreateningUnit(unit)
-    vecPosition = unit:GetPosition()
+    local vecPosition = unit:GetPosition()
+    local nUnitTeam = unit:GetTeam()
     --TODO: switch to just iterate through the enemy towers instead of calling GetUnitsInRadius
     
     local nTowerRange = 821.6 --700 + (86 * sqrtTwo)
-    nTowerRange = nTowerRange
     local tBuildings = HoN.GetUnitsInRadius(vecPosition, nTowerRange, core.UNIT_MASK_ALIVE + core.UNIT_MASK_BUILDING)
     for key, unitBuilding in pairs(tBuildings) do
-        if unitBuilding:IsTower() and unitBuilding:GetCanAttack() and (unitBuilding:GetTeam()==unit:GetTeam())==false then
+        if unitBuilding:IsTower() and unitBuilding:GetCanAttack() and unitBuilding:GetTeam() ~= nUnitTeam then
             return true
         end
     end
@@ -1041,20 +1027,13 @@ function IsTowerThreateningUnit(unit)
 end
 
 function behaviorLib.GetCreepAttackTarget(botBrain, unitEnemyCreep, unitAllyCreep) --called pretty much constantly
-    local unitSelf = core.unitSelf
-    if botBrain:GetGold() > 3000 then
-        local wellPos = core.allyWell and core.allyWell:GetPosition() or behaviorLib.PositionSelfBackUp()
-        core.OrderMoveToPosAndHoldClamp(botBrain, unitSelf, wellPos, false)
-    end
-
-    core.nHarassBonus = 0
-
     local bDebugEchos = false
     -- no predictive last hitting, just wait and react when they have 1 hit left
     -- prefers LH over deny
 
     local unitSelf = core.unitSelf
     local nDamageMin = unitSelf:GetFinalAttackDamageMin()
+    local vecSelfPosition = unitSelf:GetPosition()
     
     core.FindItems(botBrain)
 
@@ -1068,7 +1047,7 @@ function behaviorLib.GetCreepAttackTarget(botBrain, unitEnemyCreep, unitAllyCree
         local nExpectedTowerDamage = 0
 
         local vecTargetPos = unitEnemyCreep:GetPosition()
-        local nProjectileTravelTime = Vector3.Distance2D(unitSelf:GetPosition(), vecTargetPos) / nProjectileSpeed
+        local nProjectileTravelTime = Vector3.Distance2D(vecSelfPosition, vecTargetPos) / nProjectileSpeed
         if bDebugEchos then BotEcho ("Projectile travel time: " .. nProjectileTravelTime ) end 
         
         --Determine the damage expcted on the creep by other creeps
@@ -1116,7 +1095,7 @@ function behaviorLib.GetCreepAttackTarget(botBrain, unitEnemyCreep, unitAllyCree
         local nExpectedTowerDamage = 0
 
         local vecTargetPos = unitAllyCreep:GetPosition()
-        local nProjectileTravelTime = Vector3.Distance2D(unitSelf:GetPosition(), vecTargetPos) / nProjectileSpeed
+        local nProjectileTravelTime = Vector3.Distance2D(vecSelfPosition, vecTargetPos) / nProjectileSpeed
         if bDebugEchos then BotEcho ("Projectile travel time: " .. nProjectileTravelTime ) end 
         
         --Determine the damage expcted on the creep by other creeps
@@ -1167,8 +1146,9 @@ function AttackCreepsExecuteOverride(botBrain)
     local unitCreepTarget = core.unitCreepTarget
 
     if unitCreepTarget and core.CanSeeUnit(botBrain, unitCreepTarget) then      
+        local vecSelfPos = unitSelf:GetPosition()
         local vecTargetPos = unitCreepTarget:GetPosition()
-        local nDistSq = Vector3.Distance2DSq(unitSelf:GetPosition(), vecTargetPos)
+        local nDistSq = Vector3.Distance2DSq(vecSelfPos, vecTargetPos)
         local nAttackRangeSq = core.GetAbsoluteAttackRangeToUnit(unitSelf, currentTarget, true)
         
         local nDamageMin = unitSelf:GetFinalAttackDamageMin()
@@ -1178,7 +1158,7 @@ function AttackCreepsExecuteOverride(botBrain)
             local nTargetHealth = unitCreepTarget:GetHealth()
 
             local vecTargetPos = unitCreepTarget:GetPosition()
-            local nProjectileTravelTime = Vector3.Distance2D(unitSelf:GetPosition(), vecTargetPos) / nProjectileSpeed
+            local nProjectileTravelTime = Vector3.Distance2D(vecSelfPos, vecTargetPos) / nProjectileSpeed
             if bDebugEchos then BotEcho ("Projectile travel time: " .. nProjectileTravelTime ) end 
             
             local nExpectedCreepDamage = 0
@@ -1214,7 +1194,7 @@ function AttackCreepsExecuteOverride(botBrain)
                 end
             end
 
-            if nDistSq < nAttackRangeSq and unitSelf:IsAttackReady() and nDamageMin>=(unitCreepTarget:GetHealth() - nExpectedCreepDamage - nExpectedTowerDamage) then --only kill if you can get gold
+            if nDistSq < nAttackRangeSq and unitSelf:IsAttackReady() and nDamageMin >= (nTargetHealth - nExpectedCreepDamage - nExpectedTowerDamage) then --only kill if you can get gold
                 --only attack when in nRange, so not to aggro towers/creeps until necessary, and move forward when attack is on cd
                 core.OrderAttackClamp(botBrain, unitSelf, unitCreepTarget)
             elseif (nDistSq > nAttackRangeSq * 0.6) then 
@@ -1340,13 +1320,7 @@ local function abilityPush(botBrain, unitSelf)
         return false
     end
     
-    local vMovePrediction = vCreepCenter + relativeMovement("CreepPush", vCreepCenter)*10
-    
-    --[[if debugAbilityPush  then -- to compare prediction vs normal center 
-        core.DrawDebugArrow(myPos, vMovePrediction "purple")        
-        core.DrawDebugArrow(myPos, vCreepCenter, "white")
-        end]]
-    
+    local vMovePrediction = vCreepCenter + relativeMovement("CreepPush", vCreepCenter)*10    
 
     local abilJudgement = skills.abilJudgement
     local nJudgementRangeSq = abilJudgement:GetTargetRadius()
