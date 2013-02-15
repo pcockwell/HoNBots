@@ -11,4 +11,4 @@ SoulReaperBot
 Recent Releases
 ==============
 
-SoulReaperBot v0.3 - [Changelog](soulreaper/CHANGELOG.md)
+[SoulReaperBot v0.4](https://dl.dropbox.com/u/58707238/soulreaperv0.4.zip) - [Changelog](soulreaper/CHANGELOG.md)
