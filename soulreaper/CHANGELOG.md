@@ -3,7 +3,22 @@ SoulReaperBot Changelog
 
 Release Thread
 --------------
-[SoulReaperBot (v0.4)]( 'http://forums.heroesofnewerth.com/showthread.php?481413-SoulReaperBot-(v0-4)' )
+[SoulReaperBot (v1.0)]( 'http://forums.heroesofnewerth.com/showthread.php?481413-SoulReaperBot-(v1-0)' )
+
+v 1.0
+-----
+* Removed Barrier Idol as an item he picks up
+    * No code was implemented to use it
+    * Required a RIDICULOUS amount of farm for him to finally get it
+* Modified laning harass code slightly
+    * Adjusted some weightings
+    * Adjusted how some calculations were done
+    * Added difficulty gating - now requires Medium or Hard to use extra laning harass code
+    * Refined behavior in 2v1 (advantage and disadvantage) situations
+* Tested Frostfield Plate usage - worked correctly
+* Tested laning harassment utility for 1 man advantage and disadvantage situations
+* Bug fixes and significant optimization
+* Major commenting binge
 
 v 0.4
 -----
