@@ -1138,7 +1138,7 @@ function behaviorLib.GetCreepAttackTarget(botBrain, unitEnemyCreep, unitAllyCree
         
         --Determine the damage expected on the creep by other creeps
         for i, unitCreep in pairs(tNearbyEnemyCreeps) do
-            if unitCreep:GetAttackTarget() == unitEnemyCreep then
+            if unitCreep:GetAttackTarget() == unitAllyCreep then
                 local nCreepAttacks = 1 + math.floor(unitCreep:GetAttackSpeed() * nProjectileTravelTime)
                 nExpectedCreepDamage = nExpectedCreepDamage + unitCreep:GetFinalAttackDamageMin() * nCreepAttacks
             end
@@ -1146,7 +1146,7 @@ function behaviorLib.GetCreepAttackTarget(botBrain, unitEnemyCreep, unitAllyCree
 
         --Determine the damage expected on the creep by towers
         for i, unitTower in pairs(tNearbyEnemyTowers) do
-            if unitTower:GetAttackTarget() == unitEnemyCreep then
+            if unitTower:GetAttackTarget() == unitAllyCreep then
                 local nTowerAttacks = 1 + math.floor(unitTower:GetAttackSpeed() * nProjectileTravelTime)
                 nExpectedTowerDamage = nExpectedTowerDamage + unitTower:GetFinalAttackDamageMin() * nTowerAttacks
             end
