@@ -5,6 +5,11 @@ Release Thread
 --------------
 [SoulReaperBot (v1.0)]( 'http://forums.heroesofnewerth.com/showthread.php?481413-SoulReaperBot-(v1-0)' )
 
+v 1.0.1
+-------
+* Factored out the GetAttackDamageOnCreep function so that the code looks neater and prevents some typo errors
+* Fixed an issue in the harassment code where a race condition occurred if localUnits["EnemyHeroes"] changed during execution
+
 v 1.0
 -----
 * Removed Barrier Idol as an item he picks up
