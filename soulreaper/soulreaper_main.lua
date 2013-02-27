@@ -1209,14 +1209,12 @@ function AttackCreepsExecuteOverride(botBrain)
         local vecSelfPos = unitSelf:GetPosition()
         local vecTargetPos = unitCreepTarget:GetPosition()
         local nDistSq = Vector3.Distance2DSq(vecSelfPos, vecTargetPos)
-        local nAttackRangeSq = core.GetAbsoluteAttackRangeToUnit(unitSelf, currentTarget, true)       
-        local nTargetHealth = unitCreepTarget:GetHealth()
-        local nDamageMin = unitSelf:GetFinalAttackDamageMin()
+        local nAttackRangeSq = core.GetAbsoluteAttackRangeToUnit(unitSelf, currentTarget, true)
     
         --Only attack if, by the time our attack reaches the target
         -- the damage done by other sources brings the target's health
         -- below our minimum damage, and we are in range and can attack right now
-        if nDistSq < nAttackRangeSq and unitSelf:IsAttackReady() and nDamageMin >= (nTargetHealth - GetAttackDamageOnCreep(botBrain, unitCreepTarget)) then
+        if nDistSq < nAttackRangeSq and unitSelf:IsAttackReady() then
             core.OrderAttackClamp(botBrain, unitSelf, unitCreepTarget)
 
         --Otherwise get within 70% of attack range if not already

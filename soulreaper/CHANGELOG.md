@@ -8,6 +8,7 @@ Release Thread
 v 1.0.2
 -------
 * Inventory checks for regen and harass code
+* Removed extra call to GetAttackDamageOnCreep from the AttackCreepExecuteOverride as the target it receives will always be a valid one
 * Code cleanup
 
 v 1.0.1
