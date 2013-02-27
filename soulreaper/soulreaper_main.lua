@@ -1,4 +1,4 @@
--- SoulReaperBot v1.0.1
+-- SoulReaperBot v1.0.2
 
 --####################################################################
 --####################################################################
@@ -53,9 +53,6 @@ local ceil, floor, pi, tan, atan, atan2, abs, cos, sin, acos, max, random, sqrt
 
 local BotEcho, VerboseLog, BotLog = core.BotEcho, core.VerboseLog, core.BotLog
 local Clamp = core.Clamp
-
-local sqrtTwo = math.sqrt(2)
-local gold=0
 
 BotEcho('loading soulreaper_main...')
 
@@ -126,20 +123,6 @@ function object:SkillBuild()
         unitSelf:GetAbility(nSkill):LevelUp()
     end
 end
-
-
-------------------------------------------------------
---            onthink override                      --
--- Called every bot tick, custom onthink code here  --
-------------------------------------------------------
--- @param: tGameVariables
--- @return: none
-function object:onthinkOverride(tGameVariables)
-    self:onthinkOld(tGameVariables)
-end
-object.onthinkOld = object.onthink
-object.onthink  = object.onthinkOverride
-
 
 -- These are bonus agression points if a skill/item is available for use
 object.nHealUp = 5
@@ -259,7 +242,7 @@ core.FindItems = funcFindItemsOverride
 ------------------------------------------------------
 -- @param: iunitentity hero
 -- @return: number
-local function CustomHarassUtilityOverride(enemyHero) --how much to harrass, doesn't change combo order or anything
+local function CustomHarassUtilityOverride(unitTargetEnemyHero) --how much to harrass, doesn't change combo order or anything
     local nUtil = 0
     local bDebugEchos = true
     
@@ -307,15 +290,15 @@ local function CustomHarassUtilityOverride(enemyHero) --how much to harrass, doe
     local nNearbyEnemyHeroes = 0
     local nMeleeEnemies = 0
 
-    local nEnemyHeroUniqueId = enemyHero:GetUniqueID()
+    local nTargetEnemyHeroUniqueId = unitTargetEnemyHero:GetUniqueID()
     local bFoundEnemyHero = false
 
-    for i, unitEnemyHero in pairs(tNearbyEnemyHeroes) do
+    for nNearbyEnemyHeroId, unitEnemyHero in pairs(tNearbyEnemyHeroes) do
         nNearbyEnemyHeroes = nNearbyEnemyHeroes + 1
         if unitEnemyHero:GetAttackType() == "melee" then
             nMeleeEnemies = nMeleeEnemies + 1
         end
-        if i == nEnemyHeroUniqueId then
+        if nNearbyEnemyHeroId == nTargetEnemyHeroUniqueId then
             bFoundEnemyHero = true
         end
     end
@@ -325,7 +308,7 @@ local function CustomHarassUtilityOverride(enemyHero) --how much to harrass, doe
         return nUtil
     end
     
-    for i, unitAllyHero in pairs(tNearbyAllyHeroes) do
+    for _, unitAllyHero in pairs(tNearbyAllyHeroes) do
         nNearbyAllyHeroes = nNearbyAllyHeroes + 1
     end
 
@@ -334,18 +317,17 @@ local function CustomHarassUtilityOverride(enemyHero) --how much to harrass, doe
     local nSelfManaPercent = unitSelf:GetManaPercent()
     local nSelfLevel = unitSelf:GetLevel()
     local tSelfInventory = unitSelf:GetInventory()
-    local nSelfMinDamage = unitSelf:GetFinalAttackDamageMin()
     
     --Check regen
     local tRunes = core.InventoryContains(tSelfInventory, "Item_RunesOfTheBlight")
     local tHealthPots = core.InventoryContains(tSelfInventory, "Item_HealthPotion")
     local nSelfCountRegenItems = 0
 
-    for i, itemRunes in pairs(tRunes) do
+    for _, itemRunes in pairs(tRunes) do
         nSelfCountRegenItems = nSelfCountRegenItems + 1
     end
 
-    for i, itemPots in pairs(tHealthPots) do
+    for _, itemPots in pairs(tHealthPots) do
         nSelfCountRegenItems = nSelfCountRegenItems + 1
     end
 
@@ -358,7 +340,7 @@ local function CustomHarassUtilityOverride(enemyHero) --how much to harrass, doe
         local nLevelAdvantageBonus = -3
         local nHealthBonuses = 0
 
-        for i, unitEnemyHero in pairs(tNearbyEnemyHeroes) do
+        for _, unitEnemyHero in pairs(tNearbyEnemyHeroes) do
             if unitEnemyHero:GetAttackType() == "ranged" then
                 --For every ranged hero they have, become more passive
                 nUtil = nUtil - 5
@@ -390,13 +372,13 @@ local function CustomHarassUtilityOverride(enemyHero) --how much to harrass, doe
         end
 
         --Harass a melee hero if possible
-        if enemyHero and enemyHero:GetAttackType() == "melee" then
+        if unitTargetEnemyHero and unitTargetEnemyHero:GetAttackType() == "melee" then
             --Position and range information
             local vecMyPosition = unitSelf:GetPosition()
-            local nAttackRangeSq = core.GetAbsoluteAttackRangeToUnit(unitSelf, unitTarget)
+            local nAttackRangeSq = core.GetAbsoluteAttackRangeToUnit(unitSelf, unitTargetEnemyHero)
             nAttackRangeSq = nAttackRangeSq * nAttackRangeSq
             
-            local vecTargetPosition = enemyHero:GetPosition()
+            local vecTargetPosition = unitTargetEnemyHero:GetPosition()
             local nTargetDistanceSq = Vector3.Distance2DSq(vecMyPosition, vecTargetPosition)
 
             --But only if in current range
@@ -415,7 +397,7 @@ local function CustomHarassUtilityOverride(enemyHero) --how much to harrass, doe
         nUtil = nUtil + 5 * (nMeleeEnemies / nNearbyEnemyHeroes)
 
         local nHealthBonuses = 0
-        for i, unitEnemyHero in pairs(tNearbyEnemyHeroes) do
+        for _, unitEnemyHero in pairs(tNearbyEnemyHeroes) do
 
             local nEnemyHealthPercent = unitEnemyHero:GetHealthPercent()
 
@@ -435,16 +417,17 @@ local function CustomHarassUtilityOverride(enemyHero) --how much to harrass, doe
         nUtil = nUtil + 5 * (nNearbyAllyHeroes - nNearbyEnemyHeroes)
 
         local tNearbyEnemyTowers = core.localUnits['EnemyTowers']
-        for i, unitTower in pairs(tNearbyEnemyTowers) do
+        for _, unitTower in pairs(tNearbyEnemyTowers) do
             --Lower harass increase if it might aggro tower
             nUtil = nUtil - 5
         end
 
     --1v1
-    elseif nNearbyEnemyHeroes == 1 and enemyHero then
+    elseif nNearbyEnemyHeroes == 1 and unitTargetEnemyHero then
+        local nSelfMinDamage = unitSelf:GetFinalAttackDamageMin()
 
         --Get enemy info from the enemyHero passed in to function
-        local unitEnemyHero = enemyHero
+        local unitEnemyHero = unitTargetEnemyHero
         local sEnemyAttackType = unitEnemyHero:GetAttackType()
         local nEnemyHealthPercent = unitEnemyHero:GetHealthPercent()
         local nEnemyManaPercent = unitEnemyHero:GetManaPercent()
@@ -453,14 +436,14 @@ local function CustomHarassUtilityOverride(enemyHero) --how much to harrass, doe
         local nEnemyLevel = unitEnemyHero:GetLevel()
         local tEnemyInventory = unitEnemyHero:GetInventory()
         local nEnemyMinDamage = unitEnemyHero:GetFinalAttackDamageMin()
+        local bCheckRegen = false
         
         --Check regen
         local nEnemyCountRegenItems = 0
         local tEnemyRunes = {}
         local tEnemyHealthPots = {}
         if tEnemyInventory == nil then
-            if bDebugEchos then BotEcho("tEnemyInventory is nill - unit must have just gone out of sight. Returning skill and item nUtil value.") end
-            return nUtil
+            if bDebugEchos then BotEcho("tEnemyInventory is nil - unit must have just gone out of sight. Won't check regen") end
         else
             tEnemyRunes = core.InventoryContains(tEnemyInventory, "Item_RunesOfTheBlight")
             tEnemyHealthPots = core.InventoryContains(tEnemyInventory, "Item_HealthPotion")
@@ -472,6 +455,7 @@ local function CustomHarassUtilityOverride(enemyHero) --how much to harrass, doe
             for i, itemPots in pairs(tEnemyHealthPots) do
                 nEnemyCountRegenItems = nEnemyCountRegenItems + 1
             end
+            bCheckRegen = true
         end
 
         --We have higher damage
@@ -480,7 +464,7 @@ local function CustomHarassUtilityOverride(enemyHero) --how much to harrass, doe
             nUtil = nUtil + math.min((nSelfMinDamage - nEnemyMinDamage), 30)
 
             --Adjust utilities based on regen, health, mana, and enemy attack type
-            if nSelfLevel <= 6 and nSelfCountRegenItems > nEnemyCountRegenItems then
+            if bCheckRegen and nSelfLevel <= 6 and nSelfCountRegenItems > nEnemyCountRegenItems then
                 nUtil = nUtil + 4
             end
 
@@ -512,7 +496,7 @@ local function CustomHarassUtilityOverride(enemyHero) --how much to harrass, doe
             end
 
             --Adjust utilities based on regen, health, mana, and enemy attack type
-            if nSelfLevel <= 6 and nSelfCountRegenItems > nEnemyCountRegenItems then
+            if bCheckRegen and nSelfLevel <= 6 and nSelfCountRegenItems > nEnemyCountRegenItems then
                 nUtil = nUtil + 4
             end
 
@@ -854,7 +838,7 @@ function behaviorLib.HealUtility(botBrain)
             --Don't heal ourself if we are going to head back to the well anyway,
             -- as it could cause us to retrace half a walkback,
             -- unless it our health is below 20%
-            if hero:GetUniqueID() ~= nOwnID or bHealthLow  or bHealAtWell then
+            if hero:GetUniqueID() ~= nOwnID or bHealthLow or bHealAtWell then
                 local nCurrentUtility = 0
                 
                 local nHealthUtility = behaviorLib.HealHealthUtilityFn(hero) * behaviorLib.nHealHealthUtilityMul
@@ -878,7 +862,7 @@ function behaviorLib.HealUtility(botBrain)
         
             behaviorLib.unitHealTarget = unitTarget
             behaviorLib.nHealTimeToLive = nTargetTimeToLive
-        end     
+        end
     end
     
     nUtility = nUtility * behaviorLib.nHealUtilityMul
@@ -901,8 +885,11 @@ function behaviorLib.HealExecute(botBrain)
     if unitHealTarget and abilJudgement and abilJudgement:CanActivate() then 
         local unitSelf = core.unitSelf
         local vecTargetPosition = unitHealTarget:GetPosition()
-        local nDistance = Vector3.Distance2D(unitSelf:GetPosition(), vecTargetPosition)
-        if nDistance < abilJudgement:GetTargetRadius() then
+        local nDistanceSq = Vector3.Distance2DSq(unitSelf:GetPosition(), vecTargetPosition)
+        local nJudgementRangeSq = abilJudgement:GetTargetRadius()
+        nJudgementRangeSq = nJudgementRangeSq * nJudgementRangeSq
+        
+        if nDistanceSq < nJudgementRangeSq then
             core.OrderAbility(botBrain, abilJudgement)
         else
             core.OrderMoveToUnitClamp(botBrain, unitSelf, unitHealTarget)
@@ -1063,6 +1050,9 @@ behaviorLib.ReplenishBehavior["Execute"] = behaviorLib.ReplenishExecute
 behaviorLib.ReplenishBehavior["Name"] = "Replenish"
 tinsert(behaviorLib.tBehaviors, behaviorLib.ReplenishBehavior)
 
+--[[
+Commenting out for now as it may be used later
+
 function GetClosestEnemyHero(botBrain)
     local unitClosestHero = nil
     local nClosestHeroDistSq = nil
@@ -1099,6 +1089,7 @@ function IsTowerThreateningUnit(unit)
     
     return false
 end
+]]
 
 --------------------------------------------------
 --    SoulReapers's Predictive Last Hitting Helper
@@ -1116,13 +1107,9 @@ local function GetAttackDamageOnCreep(botBrain, unitCreepTarget)
 
     local unitSelf = core.unitSelf
 
-    --Get info about the target we are about to attack
+    --Get positioning information
     local vecSelfPos = unitSelf:GetPosition()
-    local vecTargetPos = unitCreepTarget:GetPosition()
-    local nDistSq = Vector3.Distance2DSq(vecSelfPos, vecTargetPos)
-    local nAttackRangeSq = core.GetAbsoluteAttackRangeToUnit(unitSelf, currentTarget, true)       
-    local nTargetHealth = unitCreepTarget:GetHealth()
-    local nDamageMin = unitSelf:GetFinalAttackDamageMin()    
+    local vecTargetPos = unitCreepTarget:GetPosition() 
 
     --Get projectile info
     local nProjectileSpeed = unitSelf:GetAttackProjectileSpeed() 
@@ -1163,7 +1150,7 @@ local function GetAttackDamageOnCreep(botBrain, unitCreepTarget)
     return nExpectedCreepDamage + nExpectedTowerDamage
 end
 
-function behaviorLib.GetCreepAttackTarget(botBrain, unitEnemyCreep, unitAllyCreep) --called pretty much constantly
+function GetCreepAttackTargetOverride(botBrain, unitEnemyCreep, unitAllyCreep) --called pretty much constantly
     local bDebugEchos = false
 
     --Get info about self
@@ -1209,6 +1196,9 @@ function behaviorLib.GetCreepAttackTarget(botBrain, unitEnemyCreep, unitAllyCree
 
     return nil
 end
+-- overload the behaviour stock function with custom 
+object.getCreepAttackTargetOld = behaviorLib.GetCreepAttackTarget
+behaviorLib.GetCreepAttackTarget = GetCreepAttackTargetOverride
 
 function AttackCreepsExecuteOverride(botBrain)
     local unitSelf = core.unitSelf

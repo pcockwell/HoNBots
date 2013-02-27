@@ -5,6 +5,11 @@ Release Thread
 --------------
 [SoulReaperBot (v1.0)]( 'http://forums.heroesofnewerth.com/showthread.php?481413-SoulReaperBot-(v1-0)' )
 
+v 1.0.2
+-------
+* Inventory checks for regen and harass code
+* Code cleanup
+
 v 1.0.1
 -------
 * Factored out the GetAttackDamageOnCreep function so that the code looks neater and prevents some typo errors
