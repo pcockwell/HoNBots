@@ -1,4 +1,4 @@
--- SoulReaperBot v1.0.2
+-- SoulReaperBot v1.0.3
 
 --####################################################################
 --####################################################################
@@ -543,9 +543,6 @@ local function GetPotentialDamage(unitTarget, bExecutionFirst)
     local abilJudgement = skills.abilJudgement
     local abilDemonicExecution = skills.abilDemonicExecution
 
-    if not abilJudgement then BotEcho("Can't find abilJudgement") end
-    if not abilDemonicExecution then BotEcho("Can't find abilDemonicExecution") end
-
     --Get mana costs
     local nJudgementManaCost = abilJudgement:GetManaCost()
     local nExecutionManaCost = abilDemonicExecution:GetManaCost()
@@ -826,7 +823,6 @@ function behaviorLib.HealUtility(botBrain)
     local nHighestUtility = 0
     local unitTarget = nil
     local nTargetTimeToLive = nil
-    local sAbilName = ""
     if abilJudgement and abilJudgement:CanActivate() then
         local tTargets = core.CopyTable(core.localUnits["AllyHeroes"])
         local nOwnID = unitSelf:GetUniqueID()

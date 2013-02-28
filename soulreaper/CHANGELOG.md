@@ -5,6 +5,10 @@ Release Thread
 --------------
 [SoulReaperBot (v1.0)]( 'http://forums.heroesofnewerth.com/showthread.php?481413-SoulReaperBot-(v1-0)' )
 
+v 1.0.3
+-------
+* More cleanup
+
 v 1.0.2
 -------
 * Inventory checks for regen and harass code
