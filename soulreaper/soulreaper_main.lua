@@ -1,4 +1,4 @@
--- SoulReaperBot v1.0.3.1
+-- SoulReaperBot v1.0.4
 
 --####################################################################
 --####################################################################
@@ -324,11 +324,13 @@ local function CustomHarassUtilityOverride(unitTargetEnemyHero) --how much to ha
 	local nSelfCountRegenItems = 0
 
 	for _, itemRunes in pairs(tRunes) do
-		nSelfCountRegenItems = nSelfCountRegenItems + 1
+		local nRunes = itemRunes:GetCharges()
+		nSelfCountRegenItems = nSelfCountRegenItems + nRunes/3
 	end
 
 	for _, itemPots in pairs(tHealthPots) do
-		nSelfCountRegenItems = nSelfCountRegenItems + 1
+		local nPots = itemPots:GetCharges()
+		nSelfCountRegenItems = nSelfCountRegenItems + nPots
 	end
 
 	--2v1 (or more) for them
@@ -368,7 +370,7 @@ local function CustomHarassUtilityOverride(unitTargetEnemyHero) --how much to ha
 
 		--If we have very little regen, be more passive
 		if nSelfLevel <= 6 then
-			nUtil = nUtil - (2 - nSelfCountRegenItems) * 2
+			nUtil = nUtil - (2 - math.floor(nSelfCountRegenItems)) * 2
 		end
 
 		--Harass a melee hero if possible
@@ -448,12 +450,14 @@ local function CustomHarassUtilityOverride(unitTargetEnemyHero) --how much to ha
 			tEnemyRunes = core.InventoryContains(tEnemyInventory, "Item_RunesOfTheBlight")
 			tEnemyHealthPots = core.InventoryContains(tEnemyInventory, "Item_HealthPotion")
 
-			for i, itemRunes in pairs(tEnemyRunes) do
-				nEnemyCountRegenItems = nEnemyCountRegenItems + 1
+			for _, itemRunes in pairs(tEnemyRunes) do
+				local nRunes = itemRunes:GetCharges()
+				nEnemyCountRegenItems = nEnemyCountRegenItems + nRunes/3
 			end
 
-			for i, itemPots in pairs(tEnemyHealthPots) do
-				nEnemyCountRegenItems = nEnemyCountRegenItems + 1
+			for _, itemPots in pairs(tEnemyHealthPots) do
+				local nPots = itemPots:GetCharges()
+				nEnemyCountRegenItems = nEnemyCountRegenItems + nPots
 			end
 			bCheckRegen = true
 		end
@@ -464,8 +468,11 @@ local function CustomHarassUtilityOverride(unitTargetEnemyHero) --how much to ha
 			nUtil = nUtil + math.min((nSelfMinDamage - nEnemyMinDamage), 30)
 
 			--Adjust utilities based on regen, health, mana, and enemy attack type
-			if bCheckRegen and nSelfLevel <= 6 and nSelfCountRegenItems > nEnemyCountRegenItems then
-				nUtil = nUtil + 4
+			if bCheckRegen and nSelfLevel <= 6 then
+				local nRegenDiff = math.floor(nSelfCountRegenItems - nEnemyCountRegenItems)
+				if nRegenDiff >= 1 then
+					nUtil = nUtil + 4
+				end
 			end
 
 			--1 Harass utility point per 10% difference in health (plus or minus)
@@ -526,7 +533,7 @@ behaviorLib.CustomHarassUtility = CustomHarassUtilityOverride
 local function GetPotentialDamage(unitTarget, bExecutionFirst)
 	--BotEcho("Calculating potential damage")
 
-	bExecutionFirst = bExecutionFirst or true
+	if bExecutionFirst == nil then bExecutionFirst = true end
 	local unitSelf = core.unitSelf
 	
 	--Position and range information
