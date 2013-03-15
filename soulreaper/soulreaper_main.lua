@@ -1,4 +1,4 @@
--- SoulReaperBot v1.0.4
+-- SoulReaperBot v1.0.4.1
 
 --####################################################################
 --####################################################################
@@ -48,8 +48,8 @@ local core, eventsLib, behaviorLib, metadata, skills = object.core, object.event
 
 local print, ipairs, pairs, string, table, next, type, tinsert, tremove, tsort, format, tostring, tonumber, strfind, strsub
 	= _G.print, _G.ipairs, _G.pairs, _G.string, _G.table, _G.next, _G.type, _G.table.insert, _G.table.remove, _G.table.sort, _G.string.format, _G.tostring, _G.tonumber, _G.string.find, _G.string.sub
-local ceil, floor, pi, tan, atan, atan2, abs, cos, sin, acos, max, random, sqrt
-	= _G.math.ceil, _G.math.floor, _G.math.pi, _G.math.tan, _G.math.atan, _G.math.atan2, _G.math.abs, _G.math.cos, _G.math.sin, _G.math.acos, _G.math.max, _G.math.random, _G.math.sqrt
+local ceil, floor, pi, tan, atan, atan2, abs, cos, sin, acos, max, min, random, sqrt
+	= _G.math.ceil, _G.math.floor, _G.math.pi, _G.math.tan, _G.math.atan, _G.math.atan2, _G.math.abs, _G.math.cos, _G.math.sin, _G.math.acos, _G.math.max, _G.math.min, _G.math.random, _G.math.sqrt
 
 local BotEcho, VerboseLog, BotLog = core.BotEcho, core.VerboseLog, core.BotLog
 local Clamp = core.Clamp
@@ -64,15 +64,20 @@ BotEcho('loading soulreaper_main...')
 --####################################################################
 --####################################################################
 
--- hero_<hero>  to reference the internal hon name of a hero, Hero_Yogi ==wildsoul
 object.heroName = 'Hero_HellDemon'
 
 
 --   item buy order. internal names  
-behaviorLib.StartingItems  = {"3 Item_MinorTotem", "Item_MarkOfTheNovice", "Item_RunesOfTheBlight", "Item_GuardianRing"}
-behaviorLib.LaneItems  = {"Item_ManaRegen3", "Item_Marchers", "Item_Intelligence5", "Item_Replenish"}
-behaviorLib.MidItems  = {"Item_Steamboots", "Item_HealthMana2", "Item_Morph"}
-behaviorLib.LateItems  = {"Item_FrostfieldPlate", "Item_BehemothsHeart"}
+behaviorLib.StartingItems  = 
+	{"3 Item_MinorTotem", "Item_MarkOfTheNovice", "Item_RunesOfTheBlight", "Item_GuardianRing"}
+behaviorLib.LaneItems  = 
+	{"Item_ManaRegen3", "Item_Marchers", "Item_Intelligence5", "Item_Replenish"} 
+	--Item_ManaRegen3 is Ring of the Teacher, Intelligence5 is Talisman of the Exile, Item_Replenish is Ring of Sorcery
+behaviorLib.MidItems  = 
+	{"Item_Steamboots", "Item_HealthMana2", "Item_Morph"}
+	--Item_HealthMana2 is Icon of the Goddess, Item_Morph is Sheepstick
+behaviorLib.LateItems  = 
+	{"Item_FrostfieldPlate", "Item_BehemothsHeart"}
 
 
 --####################################################################
@@ -86,8 +91,12 @@ behaviorLib.LateItems  = {"Item_FrostfieldPlate", "Item_BehemothsHeart"}
 ------------------------------
 --     skills               --
 ------------------------------
--- @param: none
--- @return: none
+object.tSkills ={
+	0, 2, 0, 2, 0,
+	3, 0, 2, 2, 1, 
+	3, 1, 1, 1, 4,
+	3
+}
 function object:SkillBuild()
 	core.VerboseLog("SkillBuild()")
 
@@ -99,26 +108,17 @@ function object:SkillBuild()
 		skills.abilDemonicExecution = unitSelf:GetAbility(3)
 		skills.abilAttributeBoost = unitSelf:GetAbility(4)
 	end
-	if unitSelf:GetAbilityPointsAvailable() <= 0 then
+	local nPoints = unitSelf:GetAbilityPointsAvailable()
+	if nPoints <= 0 then
 		return
 	end
 	
-	
-	-- automatically levels stats in the end
-	-- stats have to be leveld manually if needed inbetween
-	tSkills ={
-				0, 2, 0, 2, 0,
-				3, 0, 2, 2, 1, 
-				3, 1, 1, 1, 4,
-				3
-			}
-	
-	local nLev = unitSelf:GetLevel()
-	local nLevPts = unitSelf:GetAbilityPointsAvailable()
-	--BotEcho(tostring(nLev + nLevPts))
-	for i = nLev, nLev+nLevPts do
-		local nSkill = tSkills[i]
-		if nSkill == nil then nSkill = 4 end
+	local nLevel = unitSelf:GetLevel()
+	for i = nLevel, (nLevel + nPoints) do
+		local nSkill = object.tSkills[i]
+		if nSkill == nil then 
+			nSkill = 4 
+		end
 		
 		unitSelf:GetAbility(nSkill):LevelUp()
 	end
@@ -151,18 +151,15 @@ object.nFrostfieldThreshold = 12
 
 ----------------------------------------------
 --            oncombatevent override        --
--- use to check for infilictors (fe. buffs) --
 ----------------------------------------------
--- @param: eventdata
--- @return: none
 function object:oncombateventOverride(EventData)
 	self:oncombateventOld(EventData)
 	local nAddBonus = 0
-	 if EventData.Type == "Ability" then
+	
+	if EventData.Type == "Ability" then
 		if EventData.InflictorName == "Ability_HellDemon1" then
 			nAddBonus = nAddBonus + object.nHealUse
 		elseif EventData.InflictorName == "Ability_HellDemon4" then
-
 			--Get appropriate Demonic Execution bonus
 			local nExecutionLevel = skills.abilDemonicExecution:GetLevel()
 			local nExecuteUseBonus = object.nExecute1Use
@@ -171,9 +168,9 @@ function object:oncombateventOverride(EventData)
 			elseif nExecutionLevel == 3 then
 				nExecuteUseBonus = object.nExecute3Use
 			end
+			
 			nAddBonus = nAddBonus + nExecuteUseBonus
 		end
-
 	elseif EventData.Type == "Item" then
 		local nSelfUniqueId = core.unitSelf:GetUniqueID()
 		if core.itemSheepstick ~= nil and EventData.SourceUnit == nSelfUniqueId and EventData.InflictorName == core.itemSheepstick:GetName() then
@@ -184,17 +181,18 @@ function object:oncombateventOverride(EventData)
 		end
 	end
 
-  if nAddBonus > 0 then
+	if nAddBonus > 0 then
 		core.DecayBonus(self)
 		core.nHarassBonus = core.nHarassBonus + nAddBonus
 	end
 end
 -- override combat event trigger function.
-object.oncombateventOld = object.oncombatevent
-object.oncombatevent     = object.oncombateventOverride
+object.oncombateventOld	= object.oncombatevent
+object.oncombatevent		= object.oncombateventOverride
 
-
-
+----------------------------------------------
+--            FindItems override            --
+----------------------------------------------
 local function funcFindItemsOverride(botBrain)
 	local bUpdated = object.FindItemsOld(botBrain)
 
@@ -238,12 +236,9 @@ core.FindItems = funcFindItemsOverride
 
 ------------------------------------------------------
 --            customharassutility override          --
--- change utility according to usable spells here   --
 ------------------------------------------------------
--- @param: iunitentity hero
--- @return: number
-local function CustomHarassUtilityOverride(unitTargetEnemyHero) --how much to harrass, doesn't change combo order or anything
-	local nUtil = 0
+local function CustomHarassUtilityOverride(unitTargetEnemyHero) 
+	local nUtility = 0
 	local bDebugEchos = true
 	
 	--BotEcho("Rethinking hass")
@@ -252,7 +247,7 @@ local function CustomHarassUtilityOverride(unitTargetEnemyHero) --how much to ha
 
 	--Judgement up bonus
 	if skills.abilJudgement:CanActivate() then
-		nUtil = nUtil + object.nHealUp
+		nUtility = nUtility + object.nHealUp
 	end
 
 	--Demonic Execution up bonus
@@ -264,24 +259,26 @@ local function CustomHarassUtilityOverride(unitTargetEnemyHero) --how much to ha
 		elseif nExecutionLevel == 3 then
 			nExecuteUseBonus = object.nExecute3Up
 		end
-		nUtil = nUtil + nExecuteUpBonus
+		nUtility = nUtility + nExecuteUpBonus
 	end
 	
 	--Sheepstick and Frostfield Plate up bonuses
 	if object.itemSheepstick and object.itemSheepstick:CanActivate() then
-		nUtil = nUtil + object.nSheepUp
+		nUtility = nUtility + object.nSheepUp
 	end
 	
 	if object.itemFrostfieldPlate and object.itemFrostfieldPlate:CanActivate() then
-		nUtil = nUtil + object.nFrostfieldUp
+		nUtility = nUtility + object.nFrostfieldUp
 	end
 
 	--[Difficulty: Easy] Don't do advanced harrass bonuses
 	if core.nDifficulty == core.nEASY_DIFFICULTY then
-		return nUtil;
+		return nUtility;
 	end
 
+	------------------------
 	--Advanced harrass utils
+	local nAdvancedUtility = 0
 
 	--Determine lane setup
 	local tNearbyAllyHeroes = core.localUnits['AllyHeroes']
@@ -304,8 +301,8 @@ local function CustomHarassUtilityOverride(unitTargetEnemyHero) --how much to ha
 	end
 
 	if not bFoundEnemyHero then
-		if bDebugEchos then BotEcho("Can't find enemyHero in tNearbyEnemyHeroes - unit must have just gone out of sight. Returning skill and item nUtil value.") end
-		return nUtil
+		if bDebugEchos then BotEcho("Can't find enemyHero in tNearbyEnemyHeroes - unit must have just gone out of sight. Returning skill and item nUtil value only.") end
+		return nUtility
 	end
 	
 	for _, unitAllyHero in pairs(tNearbyAllyHeroes) do
@@ -333,21 +330,17 @@ local function CustomHarassUtilityOverride(unitTargetEnemyHero) --how much to ha
 		nSelfCountRegenItems = nSelfCountRegenItems + nPots
 	end
 
-	--2v1 (or more) for them
+	--Outnumbered by enemy heroes
 	if nNearbyEnemyHeroes > nNearbyAllyHeroes then
-		nUtil = nUtil - 5
+		nAdvancedUtility = nAdvancedUtility - 8
 
-		--2v1, start with a disadvantage for level bonus
-		-- so we don't go crazy
-		local nLevelAdvantageBonus = -3
+		local nLevelAdvantageBonus = 0
 		local nHealthBonuses = 0
-
+		
+		--For every ranged hero they have, become more passive
+		nAdvancedUtility = nAdvancedUtility - (5 * (nNearbyEnemyHeroes - nMeleeEnemies))
+		
 		for _, unitEnemyHero in pairs(tNearbyEnemyHeroes) do
-			if unitEnemyHero:GetAttackType() == "ranged" then
-				--For every ranged hero they have, become more passive
-				nUtil = nUtil - 5
-			end
-
 			local nEnemyLevel = unitEnemyHero:GetLevel()
 			local nEnemyHealthPercent = unitEnemyHero:GetHealthPercent()
 
@@ -366,15 +359,15 @@ local function CustomHarassUtilityOverride(unitTargetEnemyHero) --how much to ha
 		end
 
 		--Include level bonuses and health bonuses
-		nUtil = nUtil + nLevelAdvantageBonus + nHealthBonuses
+		nAdvancedUtility = nAdvancedUtility + nLevelAdvantageBonus + nHealthBonuses
 
 		--If we have very little regen, be more passive
 		if nSelfLevel <= 6 then
-			nUtil = nUtil - (2 - math.floor(nSelfCountRegenItems)) * 2
+			nAdvancedUtility = nAdvancedUtility - (2 - math.floor(nSelfCountRegenItems)) * 2
 		end
 
 		--Harass a melee hero if possible
-		if unitTargetEnemyHero and unitTargetEnemyHero:GetAttackType() == "melee" then
+		if unitTargetEnemyHero:GetAttackType() == "melee" then
 			--Position and range information
 			local vecMyPosition = unitSelf:GetPosition()
 			local nAttackRangeSq = core.GetAbsoluteAttackRangeToUnit(unitSelf, unitTargetEnemyHero)
@@ -386,17 +379,17 @@ local function CustomHarassUtilityOverride(unitTargetEnemyHero) --how much to ha
 			--But only if in current range
 			-- Don't run at them
 			if nAttackRangeSq > nTargetDistanceSq then
-				nUtil = nUtil + 5
+				nAdvancedUtility = nAdvancedUtility + 5
 			end
 		end
 
-	--2v1 (or more) for us, and there is actually an enemy hero nearby
+	--We outnumber them
 	elseif nNearbyAllyHeroes > nNearbyEnemyHeroes and nNearbyEnemyHeroes > 0 then
-		nUtil = nUtil + 5
+		nAdvancedUtility = nAdvancedUtility + 5
 
 		--Add up to 5 harass utility, depending on the makeup of enemies
 		-- The higher percent melee heroes they have, the more agressive
-		nUtil = nUtil + 5 * (nMeleeEnemies / nNearbyEnemyHeroes)
+		nAdvancedUtility = nAdvancedUtility + 5 * (nMeleeEnemies / nNearbyEnemyHeroes)
 
 		local nHealthBonuses = 0
 		for _, unitEnemyHero in pairs(tNearbyEnemyHeroes) do
@@ -413,19 +406,19 @@ local function CustomHarassUtilityOverride(unitTargetEnemyHero) --how much to ha
 		end
 
 		--Include health bonuses
-		nUtil = nUtil + nHealthBonuses
+		nAdvancedUtility = nAdvancedUtility + nHealthBonuses
 
 		--Increase harass utility by 5 for every hero more that we have over them
-		nUtil = nUtil + 5 * (nNearbyAllyHeroes - nNearbyEnemyHeroes)
+		nAdvancedUtility = nAdvancedUtility + 5 * (nNearbyAllyHeroes - nNearbyEnemyHeroes)
 
 		local tNearbyEnemyTowers = core.localUnits['EnemyTowers']
 		for _, unitTower in pairs(tNearbyEnemyTowers) do
 			--Lower harass increase if it might aggro tower
-			nUtil = nUtil - 5
+			nAdvancedUtility = nAdvancedUtility - 5
 		end
 
 	--1v1
-	elseif nNearbyEnemyHeroes == 1 and unitTargetEnemyHero then
+	elseif nNearbyEnemyHeroes == 1 then
 		local nSelfMinDamage = unitSelf:GetFinalAttackDamageMin()
 
 		--Get enemy info from the enemyHero passed in to function
@@ -465,25 +458,25 @@ local function CustomHarassUtilityOverride(unitTargetEnemyHero) --how much to ha
 		--We have higher damage
 		if nSelfMinDamage > nEnemyMinDamage then
 			--Add a bonus for higher damage
-			nUtil = nUtil + math.min((nSelfMinDamage - nEnemyMinDamage), 30)
+			nAdvancedUtility = nAdvancedUtility + min((nSelfMinDamage - nEnemyMinDamage), 30)
 
 			--Adjust utilities based on regen, health, mana, and enemy attack type
 			if bCheckRegen and nSelfLevel <= 6 then
 				local nRegenDiff = math.floor(nSelfCountRegenItems - nEnemyCountRegenItems)
 				if nRegenDiff >= 1 then
-					nUtil = nUtil + 4
+					nAdvancedUtility = nAdvancedUtility + 4
 				end
 			end
 
 			--1 Harass utility point per 10% difference in health (plus or minus)
-			nUtil = nUtil + 10 * (nSelfHealthPercent - nEnemyHealthPercent)
+			nAdvancedUtility = nAdvancedUtility + 10 * (nSelfHealthPercent - nEnemyHealthPercent)
 
 			--0.5 Harass utility point per 10% difference in mana (plus or minus)
-			nUtil = nUtil + 5 * (nSelfManaPercent - nEnemyManaPercent)
+			nAdvancedUtility = nAdvancedUtility + 5 * (nSelfManaPercent - nEnemyManaPercent)
 
 			--We have higher damage and enemy is melee
 			if sEnemyAttackType == "melee" then
-				nUtil = nUtil + 5
+				nAdvancedUtility = nAdvancedUtility + 5
 			end
 
 		--They have higher damage - don't trade hits
@@ -491,37 +484,48 @@ local function CustomHarassUtilityOverride(unitTargetEnemyHero) --how much to ha
 			--Ranged hero with higher attack damage - be careful
 			if sEnemyAttackType == "ranged" then
 				--Penalty for ranged hero with higher damage
-				nUtil = nUtil + math.max((nSelfMinDamage - nEnemyMinDamage) * 0.2, -5)
+				nAdvancedUtility = nAdvancedUtility + max((nSelfMinDamage - nEnemyMinDamage) * 0.2, -5)
 			--Melee hero with higher damage
 			else
 				--Level dependent bonus for melee heroes
 				if nEnemyLevel < 6 then
-					nUtil = nUtil + 4
+					nAdvancedUtility = nAdvancedUtility + 4
 				else
-					nUtil = nUtil + 2
+					nAdvancedUtility = nAdvancedUtility + 2
 				end
 			end
 
 			--Adjust utilities based on regen, health, mana, and enemy attack type
-			if bCheckRegen and nSelfLevel <= 6 and nSelfCountRegenItems > nEnemyCountRegenItems then
-				nUtil = nUtil + 4
+			if bCheckRegen and nSelfLevel <= 6 then
+				local nRegenDiff = math.floor(nSelfCountRegenItems - nEnemyCountRegenItems)
+				if nRegenDiff >= 1 then
+					nAdvancedUtility = nAdvancedUtility + 4
+				end
 			end
 
 			--1 Harass utility point per 10% difference in mana (plus or minus)
-			nUtil = nUtil + 5 * (nSelfManaPercent - nEnemyManaPercent)
+			nAdvancedUtility = nAdvancedUtility + 5 * (nSelfManaPercent - nEnemyManaPercent)
 		end
 
 		--Take advantage of being higher level, but dont go crazy
 		local nLevelAdvantageBonus = 2 * (nSelfLevel - nEnemyLevel)
-		nLevelAdvantageBonus = math.min(nLevelAdvantageBonus, 10)
+		nLevelAdvantageBonus = min(nLevelAdvantageBonus, 10)
 
-		nUtil = nUtil + nLevelAdvantageBonus
+		nAdvancedUtility = nAdvancedUtility + nLevelAdvantageBonus
 	end
+	
+	nUtility = nUtility + nAdvancedUtility
+	if bDebugEchos then BotEcho("AdvancedHarass - total: "..nUtility.."  advancedUtil: "..nAdvancedUtility) end
 
-	return nUtil -- no desire to attack AT ALL if 0.
+	return nUtility
 end
 -- assisgn custom Harrass function to the behaviourLib object
 behaviorLib.CustomHarassUtility = CustomHarassUtilityOverride  
+
+
+--------------------------------------------------------------
+--                    Harass Behavior                       --
+--------------------------------------------------------------
 
 --[[
 	Assumes 1 cast of Judgement and 1 (or more) auto attacks can be hit after
@@ -580,7 +584,7 @@ local function GetPotentialDamage(unitTarget, bExecutionFirst)
 
 	--Determine what the Judgement damage is
 	local nJudgementLevel = abilJudgement:GetLevel()
-	local nJudgementDamage = nJudgementLevel * 70 * (1 - nTargetMagicResistance)
+	local nJudgementDamage = (nJudgementLevel * 70) * (1 - nTargetMagicResistance)
 
 	if not bExecutionFirst and abilJudgement:CanActivate() and nTargetDistanceSq < nJudgementRangeSq and nSelfMana > nJudgementManaCost then
 		--If we aren't opening with Execution, assume we can cast a heal and apply an auto attack
@@ -602,10 +606,10 @@ local function GetPotentialDamage(unitTarget, bExecutionFirst)
 	end
 
 	--If we are within 40% of our attack range, assume 2 more attacks
-	if nAttackRangeSq * 0.16 > nTargetDistanceSq then
+	if nTargetDistanceSq < nAttackRangeSq * (0.4 * 0.4) then
 		nPotentialAttacks = nPotentialAttacks + 2
 	--If we are within 70% of our attack range, assume 1 more attack
-	elseif nAttackRangeSq * 0.50 > nTargetDistanceSq then
+	elseif nTargetDistanceSq < nAttackRangeSq * (0.7 * 0.7) then
 		nPotentialAttacks = nPotentialAttacks + 1
 	end
 
@@ -617,20 +621,14 @@ local function GetPotentialDamage(unitTarget, bExecutionFirst)
 	nDistanceWalkingSq = nDistanceWalkingSq * nDistanceWalkingSq
 
 	--Put in another heal if we can walk in range in 1 second just for good measure
-	if abilJudgement:CanActivate() and nTargetDistanceSq - nDistanceWalkingSq < nJudgementRangeSq and nSelfMana > nJudgementManaCost then
+	if abilJudgement:CanActivate() and (nTargetDistanceSq - nDistanceWalkingSq) < nJudgementRangeSq and nSelfMana > nJudgementManaCost then
 		nPotentialDamage = nPotentialDamage + nJudgementDamage
 	end
 
 	return nPotentialDamage
 end
 
---------------------------------------------------------------
---                    Harass Behavior                       --
--- All code how to use abilities against enemies goes here  --
---------------------------------------------------------------
--- @param botBrain: CBotBrain
--- @return: none
---
+-- Override
 local function HarassHeroExecuteOverride(botBrain)
 	local bDebugEchos = false
 	local bDebugHarassUtility = false and bDebugEchos
@@ -647,6 +645,9 @@ local function HarassHeroExecuteOverride(botBrain)
 	local vecTargetPosition = unitTarget:GetPosition()
 	local nTargetDistanceSq = Vector3.Distance2DSq(vecMyPosition, vecTargetPosition)
 	
+	local bCanSeeTarget = core.CanSeeUnit(botBrain, unitTarget)
+	local bTargetVuln = unitTarget:IsStunned() or unitTarget:IsImmobilized()
+	
 	local nLastHarassUtility = behaviorLib.lastHarassUtil
 	
 	--Skills
@@ -659,13 +660,9 @@ local function HarassHeroExecuteOverride(botBrain)
 	-- If so, any other action that would have taken place
 	-- gets queued instead of instantly ordered
 	local bActionTaken = false
-
-	--If we can see the target
-	if core.CanSeeUnit(botBrain, unitTarget) then
-		local bTargetVuln = unitTarget:IsStunned() or unitTarget:IsImmobilized()
-		core.FindItems()
 	
-		--Sheepstick
+	--Sheepstick
+	if not bActionTaken and bCanSeeTarget then
 		if not bTargetVuln then 
 			local itemSheepstick = core.itemSheepstick
 			if itemSheepstick then
@@ -673,27 +670,30 @@ local function HarassHeroExecuteOverride(botBrain)
 				if itemSheepstick:CanActivate() and nLastHarassUtility > botBrain.nSheepThreshold then
 					if nTargetDistanceSq < (nRange * nRange) then
 						if bDebugEchos then BotEcho("Using sheepstick") end
-						--If bActionTaken = true, this will queue the order
-						bActionTaken = core.OrderItemEntityClamp(botBrain, unitSelf, itemSheepstick, unitTarget, false, bActionTaken)
-					end
-				end
-			end
-	
-			--Frostfield
-			local itemFrostfieldPlate = core.itemFrostfieldPlate
-			if itemFrostfieldPlate then
-				local nRange = itemFrostfieldPlate:GetTargetRadius()
-				if itemFrostfieldPlate:CanActivate() and nLastHarassUtility > botBrain.nFrostfieldThreshold then
-					if nTargetDistanceSq < (nRange * nRange) * 0.9 then
-						if bDebugEchos then BotEcho("Using frostfield") end
-						--If bActionTaken = true, this will queue the order
-						bActionTaken = core.OrderItemClamp(botBrain, unitSelf, itemFrostfieldPlate, false, bActionTaken)
+						bActionTaken = core.OrderItemEntityClamp(botBrain, unitSelf, itemSheepstick, unitTarget, false)
 					end
 				end
 			end
 		end
+	end
 
-		--Demonic Execution info
+	--Frostfield
+	if not bActionTaken and not bTargetVuln then 
+		local itemFrostfieldPlate = core.itemFrostfieldPlate
+		if itemFrostfieldPlate then
+			local nRange = itemFrostfieldPlate:GetTargetRadius()
+			if itemFrostfieldPlate:CanActivate() and nLastHarassUtility > botBrain.nFrostfieldThreshold then
+				if nTargetDistanceSq < (nRange * nRange) * 0.9 then
+					if bDebugEchos then BotEcho("Using frostfield") end
+					bActionTaken = core.OrderItemClamp(botBrain, unitSelf, itemFrostfieldPlate, false)
+				end
+			end
+		end
+	end
+
+	--Demonic Execution
+	if not bActionTaken and bCanSeeTarget then
+		--Get the right threshold
 		local nExecutionLevel = abilDemonicExecution:GetLevel()
 		local nExecuteLevelThreshold = botBrain.nExecute1Threshold
 		local nExecuteLevelUseHarassBonus = botBrain.nExecute1Use
@@ -705,13 +705,11 @@ local function HarassHeroExecuteOverride(botBrain)
 			nExecuteLevelUseHarassBonus = botBrain.nExecute3Use
 		end
 
-		--Demonic Execution
 		if nLastHarassUtility > nExecuteLevelThreshold then
-
-			--Only do calcs if in range
 			local nRange = abilDemonicExecution:GetRange()
 			if nTargetDistanceSq < (nRange * nRange) then
 				local nPotentialDamage = GetPotentialDamage(unitTarget, true)
+				
 				if bDebugHarassUtility then 
 					BotEcho("Potential damage: " .. nPotentialDamage)
 					BotEcho("Target Health: " .. unitTarget:GetHealth())
@@ -722,10 +720,6 @@ local function HarassHeroExecuteOverride(botBrain)
 				   
 					--If bActionTaken = true, this will queue the order
 					bActionTaken = core.OrderAbilityEntity(botBrain, abilDemonicExecution, unitTarget, bActionTaken)
-
-					--Just used demonic execution, so up the HarassUtility as needed,
-					-- and move towards the target, but still attack while doing so
-					nLastHarassUtility = nLastHarassUtility + nExecuteLevelUseHarassBonus
 
 					if unitSelf:IsAttackReady() then
 						--If bActionTaken = true, this will queue the order
@@ -739,25 +733,27 @@ local function HarassHeroExecuteOverride(botBrain)
 		end
 	end
 
-	--Judgement damage info
-	local nJudgementDamage = abilJudgement:GetLevel() * 70
-	local nTargetMagicResistance = unitTarget:GetMagicResistance()
-	if unitTarget and nTargetMagicResistance then
-		nJudgementDamage = nJudgementDamage * (1 - nTargetMagicResistance)
-	end 
-
 	--Judgement
-	if nLastHarassUtility > botBrain.nHealThreshold or nJudgementDamage > unitTarget:GetHealth() then
-		local nRange = abilJudgement:GetTargetRadius()
-		--Apply a 20% handicap to this skill's range 
-		-- since it seems to sometimes incorrectly
-		-- estimate if a target is in range
-		nRange = nRange * 0.8
+	if not bActionTaken then
+		--Judgement damage info
+		local nJudgementDamage = abilJudgement:GetLevel() * 70
+		local nTargetMagicResistance = unitTarget:GetMagicResistance()
+		if unitTarget and nTargetMagicResistance then
+			nJudgementDamage = nJudgementDamage * (1 - nTargetMagicResistance)
+		end 
 
-		if abilJudgement:CanActivate() and nTargetDistanceSq < (nRange * nRange) then
-			if bDebugEchos then BotEcho("USING SKILL JUDGEMENT!!!!") end
-			--If bActionTaken = true, this will queue the order
-			bActionTaken = core.OrderAbility(botBrain, abilJudgement, true, bActionTaken)
+		if nLastHarassUtility > botBrain.nHealThreshold or nJudgementDamage > unitTarget:GetHealth() then
+			local nRange = abilJudgement:GetTargetRadius()
+			--Apply a 20% handicap to this skill's range 
+			-- since it seems to sometimes incorrectly
+			-- estimate if a target is in range
+			nRange = nRange * 0.8
+
+			if abilJudgement:CanActivate() and nTargetDistanceSq < (nRange * nRange) then
+				if bDebugEchos then BotEcho("USING SKILL JUDGEMENT!!!!") end
+				
+				bActionTaken = core.OrderAbility(botBrain, abilJudgement, true)
+			end
 		end
 	end
 	
