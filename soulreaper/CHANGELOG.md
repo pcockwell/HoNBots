@@ -5,6 +5,10 @@ Release Thread
 --------------
 [SoulReaperBot (v1.0)]( 'http://forums.heroesofnewerth.com/showthread.php?481413-SoulReaperBot-(v1-0)' )
 
+v 1.0.6 (malloc)
+----------------
+* Updates by malloc mainly concerning cleanup
+
 v 1.0.4.1
 ---------
 * Fixed regen calcs as to properly use charges
