@@ -5,6 +5,11 @@ Release Thread
 --------------
 [SoulReaperBot (v1.0)]( 'http://forums.heroesofnewerth.com/showthread.php?481413-SoulReaperBot-(v1-0)' )
 
+v 1.0.7
+-------
+* Mana ring rework
+    * Now checks missing mana, percent of mana pool an activation represents, and calculates utility accordingly
+
 v 1.0.6 (malloc)
 ----------------
 * Updates by malloc mainly concerning cleanup

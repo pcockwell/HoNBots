@@ -239,7 +239,7 @@ core.FindItems = funcFindItemsOverride
 ------------------------------------------------------
 local function CustomHarassUtilityOverride(unitTargetEnemyHero) 
 	local nUtility = 0
-	local bDebugEchos = true
+	local bDebugEchos = false
 	
 	--BotEcho("Rethinking hass")
 	
@@ -692,7 +692,7 @@ local function HarassHeroExecuteOverride(botBrain)
 	end
 
 	--Demonic Execution
-	if not bActionTaken and bCanSeeTarget and abilDemonicExecution:CanActivate() and
+	if not bActionTaken and bCanSeeTarget and abilDemonicExecution:CanActivate() then
 		--Get the right threshold
 		local nExecutionLevel = abilDemonicExecution:GetLevel()
 		local nExecuteLevelThreshold = botBrain.nExecute1Threshold
@@ -914,17 +914,44 @@ tinsert(behaviorLib.tBehaviors, behaviorLib.HealBehavior)
 --    Taken from Djulio's BeheBot
 ----------------------------------
 
-behaviorLib.nReplenishUtilityMul = 1.3
-
 function behaviorLib.ReplenishManaUtilityFn(unitHero)
 	local nUtility = 0
-	 
-	local nYIntercept = 100
-	local nXIntercept = 100
-	local nOrder = 2
+	local nReplenishMana = 135
 
-	nUtility = core.ExpDecay(unitHero:GetManaPercent() * 100, nYIntercept, nXIntercept, nOrder)
-	 
+	if unitHero == core.unitSelf then
+		nReplenishMana = nReplenishMana - 40
+	end
+
+	local nUnitCurrentMana = unitHero:GetMana()
+	local nUnitMaxMana = unitHero:GetMaxMana()
+	local nUnitMissingMana = nUnitMaxMana - nUnitCurrentMana
+	local nUnitPercentMana = nUnitCurrentMana / nUnitMaxMana
+	local nPercentManaIncrease = nReplenishMana / nUnitMaxMana
+
+	if nUnitMissingMana < nReplenishMana then
+		return nUtility
+	else
+		nUtility = nUtility + 20
+	end
+
+	--The lower our mana pool is, the more a mana ring activation matters
+	--nLowManaPercentMul = 1 per 10% mana pool missing, with a minimum
+	--  value of 1
+	local nLowManaPercentMul = max(10 * (1 - nUnitPercentMana), 1)
+
+	--Utility is increased based on the percent of mana increase that
+	--  an activation represents multiplied by the low mana percent multiplier
+	--There is 1.5 point of utility (times the multiplier) for every 10% of 
+	--  mana that an activation increases
+	nUtility = nUtility + (15 * nPercentManaIncrease) * nLowManaPercentMul
+
+	--Example case:
+	-- A strength hero with a low max mana pool
+	-- A mana ring activation represents 20% mana pool (675 max mana),
+	-- and the hero is currently sitting at 25% mana.
+	-- nLowManaPercentMul = 11.25, and 10 * nPercentManaIncrease = 3
+	-- Overall utility is the base of 20 + 33.75 = 53.75
+ 
 	return nUtility
 end
 
@@ -943,7 +970,7 @@ function behaviorLib.ReplenishUtility(botBrain)
 	 
 	local nHighestUtility = 0
 	local unitTarget = nil
-	local sAbilName = ""
+
 	if itemRoS and itemRoS:CanActivate() then
 		local tTargets = core.CopyTable(core.localUnits["AllyHeroes"])
 		local nOwnID = unitSelf:GetUniqueID()
@@ -955,24 +982,13 @@ function behaviorLib.ReplenishUtility(botBrain)
 			if nCurrentUtility > nHighestUtility then
 				nHighestUtility = nCurrentUtility
 				unitTarget = hero
-				if bDebugEchos then BotEcho(format("%s Replenish util: %d", hero:GetTypeName(), nCurrentUtility)) end
 			end
 		end
 
 		if unitTarget then
-			nUtility = nHighestUtility                
-			sAbilName = "Replenish"
-		 
+			nUtility = nHighestUtility 		 
 			behaviorLib.unitReplenishTarget = unitTarget
 		end       
-	end
-	 
-	if bDebugEchos then BotEcho(format("    abil: %s util: %d", sAbilName, nUtility)) end
-	 
-	nUtility = nUtility * behaviorLib.nReplenishUtilityMul
-	 
-	if botBrain.bDebugUtility == true and nUtility ~= 0 then
-		BotEcho(format("  HelpUtility: %g", nUtility))
 	end
 	 
 	return nUtility
